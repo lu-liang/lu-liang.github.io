@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="lu liang 在Github上的个人博客">
+    <meta name="keyword" content="AI, Cloud">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="亮随笔" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        jupyter与spark集成的几种方法｜Liang&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://lu-liang.github.io/2018/10/08/jupyter-spark/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="../../../../css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../../../../css/blog-style.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="../../../../css/syntax.css"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- hexo-inject:begin --><!-- hexo-inject:end --><!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    亮随笔
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>jupyter与spark集成的几种方法</h1>
+                    
+                    <span class="meta">
+                         作者 Lu Liang
+                        <span>
+                          日期 2018-10-08
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#jupyter"
+                           title="jupyter">jupyter</a>
+                        
+                        <a class="tag" href="/tags/#spark"
+                           title="spark">spark</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            jupyter与spark集成的几种方法
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>Jupyter notebook is an popular and excellent tool in data scientists. They can use it to create, verify and share model via their favorite programing language. Spark is a great software to support both batch and real time data analysis in big data area. Especially, it also supports all kinds of algorithms in the component “MLlib”. It will be amazing way to work in an integration environment for both jupyter and spark in machine learning world. Now, we will introduce 4 ways to integrate jupyter and spark.</p>
+<h2 id="Using-toree-which-is-previously-called-“Spark-Kernel”-jupyter-toree"><a href="#Using-toree-which-is-previously-called-“Spark-Kernel”-jupyter-toree" class="headerlink" title="Using toree which is previously called “Spark Kernel”. (jupyter + toree)"></a>Using <strong>toree</strong> which is previously called “Spark Kernel”. (jupyter + toree)</h2><p>When you are plan to use toree to run in jupyter server, you need to know the following limitations.</p>
+<blockquote>
+<ul>
+<li>spark/spark client need to be installed in this server.</li>
+<li>spark-submit is also kicked off at this server.</li>
+</ul>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># install spark</span><br><span class="line">https://spark.apache.org/docs/latest/</span><br><span class="line"></span><br><span class="line"># install toree</span><br><span class="line">pip install toree</span><br><span class="line"></span><br><span class="line"># configure toree</span><br><span class="line">jupyter toree install --spark_home=your-spark-home</span><br></pre></td></tr></table></figure>
+<img src="/2018/10/08/jupyter-spark/toree_with_notebook.png" title="toree_with_notebook">
+<h2 id="Using-sparkmagic-and-livy-jupyter-sparkmagic-livy"><a href="#Using-sparkmagic-and-livy-jupyter-sparkmagic-livy" class="headerlink" title="Using sparkmagic and livy (jupyter + sparkmagic + livy)"></a>Using <strong>sparkmagic</strong> and <strong>livy</strong> (jupyter + sparkmagic + livy)</h2><p>livy is a spark rest server. sparkmagic provides several kernels such as pyspark, pyspark3, sparkr for jupyter notebook by working with livy sever together. With this approach, you may know the following features.</p>
+<blockquote>
+<ul>
+<li>don’t need to install spark-client on juptyer server side</li>
+<li>shift the submitting of spark job from jupyter server side to livy side</li>
+</ul>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># install sparkmagic</span><br><span class="line">pip install sparkmagic</span><br><span class="line"></span><br><span class="line"># Make sure that ipywidgets is properly installed.</span><br><span class="line">jupyter nbextension enable --py --sys-prefix widgetsnbextension</span><br><span class="line"></span><br><span class="line"># show where sparkmagic is installed.</span><br><span class="line">pip show sparkmagic</span><br><span class="line"></span><br><span class="line"># (Optional) install wrapper kernerls</span><br><span class="line">jupyter-kernelspec install sparkmagic/kernels/sparkkernel</span><br><span class="line">jupyter-kernelspec install sparkmagic/kernels/pysparkkernel</span><br><span class="line">jupyter-kernelspec install sparkmagic/kernels/pyspark3kernel</span><br><span class="line">jupyter-kernelspec install sparkmagic/kernels/sparkrkernel</span><br><span class="line"></span><br><span class="line"># (Optional) modify sparkmagic configuration file.</span><br><span class="line">~/.sparkmagic/config.json</span><br><span class="line"></span><br><span class="line">https://github.com/jupyter-incubator/sparkmagic/blob/master/sparkmagic/example_config.json</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">  &quot;kernel_python_credentials&quot; : &#123;</span><br><span class="line">    &quot;username&quot;: &quot;&quot;,</span><br><span class="line">    &quot;password&quot;: &quot;&quot;,</span><br><span class="line">    &quot;url&quot;: &quot;http://localhost:8998&quot;,</span><br><span class="line">    &quot;auth&quot;: &quot;None&quot;</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  &quot;kernel_scala_credentials&quot; : &#123;</span><br><span class="line">    &quot;username&quot;: &quot;&quot;,</span><br><span class="line">    &quot;password&quot;: &quot;&quot;,</span><br><span class="line">    &quot;url&quot;: &quot;http://localhost:8998&quot;,</span><br><span class="line">    &quot;auth&quot;: &quot;None&quot;</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;kernel_r_credentials&quot;: &#123;</span><br><span class="line">    &quot;username&quot;: &quot;&quot;,</span><br><span class="line">    &quot;password&quot;: &quot;&quot;,</span><br><span class="line">    &quot;url&quot;: &quot;http://localhost:8998&quot;</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  &quot;logging_config&quot;: &#123;</span><br><span class="line">    &quot;version&quot;: 1,</span><br><span class="line">    &quot;formatters&quot;: &#123;</span><br><span class="line">      &quot;magicsFormatter&quot;: &#123;</span><br><span class="line">        &quot;format&quot;: &quot;%(asctime)s\t%(levelname)s\t%(message)s&quot;,</span><br><span class="line">        &quot;datefmt&quot;: &quot;&quot;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;handlers&quot;: &#123;</span><br><span class="line">      &quot;magicsHandler&quot;: &#123;</span><br><span class="line">        &quot;class&quot;: &quot;hdijupyterutils.filehandler.MagicsFileHandler&quot;,</span><br><span class="line">        &quot;formatter&quot;: &quot;magicsFormatter&quot;,</span><br><span class="line">        &quot;home_path&quot;: &quot;~/.sparkmagic&quot;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;loggers&quot;: &#123;</span><br><span class="line">      &quot;magicsLogger&quot;: &#123;</span><br><span class="line">        &quot;handlers&quot;: [&quot;magicsHandler&quot;],</span><br><span class="line">        &quot;level&quot;: &quot;DEBUG&quot;,</span><br><span class="line">        &quot;propagate&quot;: 0</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  &quot;wait_for_idle_timeout_seconds&quot;: 15,</span><br><span class="line">  &quot;livy_session_startup_timeout_seconds&quot;: 60,</span><br><span class="line"></span><br><span class="line">  &quot;fatal_error_suggestion&quot;: &quot;The code failed because of a fatal error:\n\t&#123;&#125;.\n\nSome things to try:\na) Make sure Spark has enough available resources for Jupyter to create a Spark context.\nb) Contact your Jupyter administrator to make sure the Spark magics library is configured correctly.\nc) Restart the kernel.&quot;,</span><br><span class="line"></span><br><span class="line">  &quot;ignore_ssl_errors&quot;: false,</span><br><span class="line"></span><br><span class="line">  &quot;session_configs&quot;: &#123;</span><br><span class="line">    &quot;driverMemory&quot;: &quot;1000M&quot;,</span><br><span class="line">    &quot;executorCores&quot;: 2</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  &quot;use_auto_viz&quot;: true,</span><br><span class="line">  &quot;coerce_dataframe&quot;: true,</span><br><span class="line">  &quot;max_results_sql&quot;: 2500,</span><br><span class="line">  &quot;pyspark_dataframe_encoding&quot;: &quot;utf-8&quot;,</span><br><span class="line"></span><br><span class="line">  &quot;heartbeat_refresh_seconds&quot;: 30,</span><br><span class="line">  &quot;livy_server_heartbeat_timeout_seconds&quot;: 0,</span><br><span class="line">  &quot;heartbeat_retry_seconds&quot;: 10,</span><br><span class="line"></span><br><span class="line">  &quot;server_extension_default_kernel_name&quot;: &quot;pysparkkernel&quot;,</span><br><span class="line">  &quot;custom_headers&quot;: &#123;&#125;,</span><br><span class="line"></span><br><span class="line">  &quot;retry_policy&quot;: &quot;configurable&quot;,</span><br><span class="line">  &quot;retry_seconds_to_sleep_list&quot;: [0.2, 0.5, 1, 3, 5],</span><br><span class="line">  &quot;configurable_retry_policy_max_retries&quot;: 8</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># (Optional) Enable the server extension so that clusters can be programatically changed:</span><br><span class="line">jupyter serverextension enable --py sparkmagic</span><br></pre></td></tr></table></figure>
+<p>Notebook magic list in sparkmagic<br><img src="/2018/10/08/jupyter-spark/sparkmagic_list.png" title="sparkmagic_list"></p>
+<p>The integration chart for sparkmagic and livy<br><img src="/2018/10/08/jupyter-spark/sparkmagic_livy.png" title="sparkmagic_livy"></p>
+<h2 id="Using-nb2kg-kernelgateway-and-toree-jupyter-nb2kg-kernelgateway-toree"><a href="#Using-nb2kg-kernelgateway-and-toree-jupyter-nb2kg-kernelgateway-toree" class="headerlink" title="Using nb2kg, kernelgateway and toree (jupyter + nb2kg + kernelgateway +  toree)"></a>Using <strong>nb2kg</strong>, <strong>kernelgateway</strong> and <strong>toree</strong> (jupyter + nb2kg + kernelgateway +  toree)</h2><blockquote>
+<ul>
+<li>spark/spark client need to be installed at kernelgateway side.</li>
+<li>spark-submit is ran at kernelgateway side.</li>
+</ul>
+</blockquote>
+<ol>
+<li><p>Install nb2kg and run notebook server</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># install nb2kg</span><br><span class="line">pip install nb2kg</span><br><span class="line"></span><br><span class="line"># register nb2kg</span><br><span class="line">jupyter serverextension enable --py nb2kg --sys-prefix</span><br><span class="line"></span><br><span class="line"># start jupyter notebook server</span><br><span class="line">export KG_URL=http://kg-host:port</span><br><span class="line">jupyter notebook \</span><br><span class="line">  --NotebookApp.session_manager_class=nb2kg.managers.SessionManager \</span><br><span class="line">  --NotebookApp.kernel_manager_class=nb2kg.managers.RemoteKernelManager \</span><br><span class="line">  --NotebookApp.kernel_spec_manager_class=nb2kg.managers.RemoteKernelSpecManager</span><br><span class="line"></span><br><span class="line"># verify if nb2kg is enable.</span><br><span class="line">jupyter serverextension list</span><br><span class="line"></span><br><span class="line"> nb2kg  enabled</span><br><span class="line"> - Validating...</span><br><span class="line">  nb2kg  OK</span><br><span class="line"></span><br><span class="line"># uninstall nb2kg</span><br><span class="line">jupyter serverextension disable --py nb2kg --sys-prefix</span><br><span class="line">pip uninstall -y nb2kg</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Install kernel gateway</p>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># install from pypi</span><br><span class="line">pip install jupyter_kernel_gateway</span><br><span class="line"></span><br><span class="line"># show all config options</span><br><span class="line">jupyter kernelgateway --help-all</span><br><span class="line"></span><br><span class="line"># run it with default options</span><br><span class="line">jupyter kernelgateway</span><br></pre></td></tr></table></figure>
+<img src="/2018/10/08/jupyter-spark/nb2kg_deploy.png" title="nb2kg_deploy">
+<ol start="3">
+<li>Install toree in the server where kernelgatway is installed.<br>The detailed steps, please refer to the previous section.</li>
+</ol>
+<img src="/2018/10/08/jupyter-spark/nb2kg_kg_toree.png" title="nb2kg_kg_toree">
+<h2 id="Using-nb2kg-kernelgateway-sparkmagic-and-livy-jupyter-nb2kg-kernelgateway-sparkmagic-livy"><a href="#Using-nb2kg-kernelgateway-sparkmagic-and-livy-jupyter-nb2kg-kernelgateway-sparkmagic-livy" class="headerlink" title="Using nb2kg, kernelgateway, sparkmagic and livy (jupyter + nb2kg + kernelgateway +  sparkmagic + livy)"></a>Using <strong>nb2kg</strong>, <strong>kernelgateway</strong>, <strong>sparkmagic</strong> and <strong>livy</strong> (jupyter + nb2kg + kernelgateway +  sparkmagic + livy)</h2><blockquote>
+<ul>
+<li>do not need to install spark/spark client since we call spark by livy.</li>
+<li>shift the submitting of spark job from kernelgateway side to livy side.  </li>
+</ul>
+</blockquote>
+<p>The detailed steps, please refer to the upper sections.</p>
+<img src="/2018/10/08/jupyter-spark/nb2kg_kg_sparkmagic_livy.png" title="nb2kg_kg_sparkmagic_livy">
+<h2 id="An-step-by-step-example-to-use-toree-in-jupyter"><a href="#An-step-by-step-example-to-use-toree-in-jupyter" class="headerlink" title="An step by step example to use toree in jupyter."></a>An step by step example to use toree in jupyter.</h2><ol>
+<li>Install spark</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">export SPARK_HOME=/Users/luliang/Tools/spark-2.1.1-bin-hadoop2.7</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>Install anaconda which includes jupyter and python.</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># install anacoda</span><br><span class="line">download the image from [anaconda webside](https://www.anaconda.com/download/) based on your os and install it.</span><br><span class="line"></span><br><span class="line"># List current available kernel</span><br><span class="line">jupyter kernelspec list</span><br><span class="line"></span><br><span class="line"># Start notebook</span><br><span class="line">jupyter notebook</span><br></pre></td></tr></table></figure>
+<ol start="3">
+<li>List all configuration information for jupyter.</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">jupyter --paths</span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li>Install toree.</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">pip install toree</span><br><span class="line">jupyter toree install --spark_home=your-spark-home</span><br><span class="line"></span><br><span class="line"># Other examples to install toree kernel with different options:</span><br><span class="line"></span><br><span class="line">jupyter toree install --spark_home=/usr/hdp/current/spark2-client --spark_opts=&apos;--master=spark://hdpn.xxx.xxx.com:7077&apos; --kernel_name=hdpn_standalone</span><br><span class="line"></span><br><span class="line">jupyter toree install --spark_home=/spark/home/dir</span><br><span class="line">jupyter toree install --spark_opts=&apos;--master=local[4] --executor-memory=3G&apos;</span><br><span class="line">jupyter toree install --kernel_name=toree_special</span><br><span class="line">jupyter toree install --toree_opts=&apos;--nosparkcontext&apos;</span><br><span class="line">jupyter toree install --interpreters=PySpark,SQL</span><br><span class="line">jupyter toree install --python=python</span><br><span class="line">jupyter toree install --help-all</span><br></pre></td></tr></table></figure>
+<ol start="5">
+<li>List current available notebook servers.</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">jupyter notebook list</span><br></pre></td></tr></table></figure>
+<ol start="6">
+<li><p>Generate Configuration File under ~/.jupyter</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># Writing default config to: /Users/luliang/.jupyter/jupyter_notebook_config.py</span><br><span class="line">jupyter-notebook --generate-config</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>(Optional) Generate password and set passwork for notebook</p>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">产生密码：终端输入ipython  </span><br><span class="line">In [1]: from IPython.lib import passwd  </span><br><span class="line">In [2]: passwd()  </span><br><span class="line">Enter password:   </span><br><span class="line">Verify password:   </span><br><span class="line">Out[2]: &apos;sha1:6402ac25a515:2755b924b8bb5bef2475f7918776197e2f972858&apos;  </span><br><span class="line"></span><br><span class="line">配置参数：  </span><br><span class="line">进入/root/.jupyter/jupyter_notebook_config.py  </span><br><span class="line">c.NotebookApp.ip = &apos;*&apos;   #启动服务的地址，设置成 ‘*’ 可以从同一网段的其他机器访问到；  </span><br><span class="line">c.NotebookApp.open_browser = False     #启动 ipython notebook 的时候不会自动打开浏览器；  </span><br><span class="line">c.NotebookApp.password = &apos;sha1:6402ac25a515:2755b924b8bb5bef2475f7918776197e2f972858&apos;  # ipython notebook的登陆密码  </span><br><span class="line">c.NotebookApp.port = 6666 #设置访问端口 每次启动ipthon notebook端口会加1</span><br></pre></td></tr></table></figure>
+<ol start="8">
+<li>(Optional) Configure notebook with https</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># A self-signed certificate can be generated with openssl.</span><br><span class="line"># This certificate is valid for 365 days with both the key and certificate data written to the same file.</span><br><span class="line"></span><br><span class="line">$ openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout mykey.key -out mycert.pem</span><br><span class="line"></span><br><span class="line"># Edit the jupyter_notebook_config.py file in ~/.jupyter to use the certificate.</span><br><span class="line"></span><br><span class="line">c.NotebookApp.certfile = u’/absolute/path/to/your/certificate/mycert.pem’</span><br><span class="line">c.NotebookApp.keyfile = u’/absolute/path/to/your/certificate/mykey.key’</span><br></pre></td></tr></table></figure>
+<ol start="9">
+<li>Now you can access Jupyter with this url: <a href="https://hdte.xxx.xxx.com:6666/" target="_blank" rel="noopener">https://hdte.xxx.xxx.com:6666/</a></li>
+</ol>
+<p>To avoid chaos, you can refer to this name changing list.</p>
+<hr>
+<ul>
+<li>Spark Kernel (old)  ==&gt;  Toree   (new)    </li>
+<li>Ipython      (old)  ==&gt;  jupyter (new)    </li>
+</ul>
+<hr>
+<h2 id="Refer-to"><a href="#Refer-to" class="headerlink" title="Refer to"></a>Refer to</h2><ul>
+<li><a href="https://jupyter-kernel-gateway.readthedocs.io/en/latest/getting-started.html" target="_blank" rel="noopener">https://jupyter-kernel-gateway.readthedocs.io/en/latest/getting-started.html</a></li>
+<li><a href="https://github.com/jupyter/kernel_gateway" target="_blank" rel="noopener">https://github.com/jupyter/kernel_gateway</a></li>
+<li><a href="https://github.com/jupyter/nb2kg" target="_blank" rel="noopener">https://github.com/jupyter/nb2kg</a></li>
+<li><a href="https://github.com/apache/incubator-toree" target="_blank" rel="noopener">https://github.com/apache/incubator-toree</a></li>
+<li><a href="http://toree.apache.org/docs/current/user/quick-start/" target="_blank" rel="noopener">http://toree.apache.org/docs/current/user/quick-start/</a></li>
+<li><a href="https://github.com/jupyter-incubator/sparkmagic" target="_blank" rel="noopener">https://github.com/jupyter-incubator/sparkmagic</a></li>
+</ul>
+<p>Two examples for creating a kind of kernel for jupyter notebook.</p>
+<ul>
+<li><a href="https://github.com/takluyver/bash_kernel/blob/0966dc102d7549f5c909c93de633a95b2af9f707/bash_kernel/kernel.py" target="_blank" rel="noopener">https://github.com/takluyver/bash_kernel/blob/0966dc102d7549f5c909c93de633a95b2af9f707/bash_kernel/kernel.py</a></li>
+<li><a href="https://github.com/dsblank/simple_kernel" target="_blank" rel="noopener">https://github.com/dsblank/simple_kernel</a></li>
+</ul>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2018/10/17/git-jenkins/" data-toggle="tooltip" data-placement="top"
+                           title="git与jenkins的集成">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2018/10/01/learn-go/" data-toggle="tooltip" data-placement="top"
+                           title="go语言设计中几个有意思的地方。">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Using-toree-which-is-previously-called-“Spark-Kernel”-jupyter-toree"><span class="toc-text">Using toree which is previously called “Spark Kernel”. (jupyter + toree)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Using-sparkmagic-and-livy-jupyter-sparkmagic-livy"><span class="toc-text">Using sparkmagic and livy (jupyter + sparkmagic + livy)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Using-nb2kg-kernelgateway-and-toree-jupyter-nb2kg-kernelgateway-toree"><span class="toc-text">Using nb2kg, kernelgateway and toree (jupyter + nb2kg + kernelgateway +  toree)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Using-nb2kg-kernelgateway-sparkmagic-and-livy-jupyter-nb2kg-kernelgateway-sparkmagic-livy"><span class="toc-text">Using nb2kg, kernelgateway, sparkmagic and livy (jupyter + nb2kg + kernelgateway +  sparkmagic + livy)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#An-step-by-step-example-to-use-toree-in-jupyter"><span class="toc-text">An step by step example to use toree in jupyter.</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Refer-to"><span class="toc-text">Refer to</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#jupyter"
+                           title="jupyter">jupyter</a>
+                        
+                        <a class="tag" href="/tags/#spark"
+                           title="spark">spark</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; 亮随笔 2019
+                    <br>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="../../../../js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../../../../js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../../../../js/blog.js"></script>
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://lu-liang.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src=""><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+</body>
+
+</html>

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="lu liang 在Github上的个人博客">
+    <meta name="keyword" content="AI, Cloud">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="亮随笔" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        使用Metaparticle在code中直接编码docker/kubernetes是个好主意吗？｜Liang&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://lu-liang.github.io/2018/09/29/Metaparticle/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="../../../../css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../../../../css/blog-style.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="../../../../css/syntax.css"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- hexo-inject:begin --><!-- hexo-inject:end --><!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    亮随笔
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>使用Metaparticle在code中直接编码docker/kubernetes是个好主意吗？</h1>
+                    
+                    <span class="meta">
+                         作者 Lu Liang
+                        <span>
+                          日期 2018-09-29
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Metaparticle"
+                           title="Metaparticle">Metaparticle</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            使用Metaparticle在code中直接编码docker/kubernetes是个好主意吗？
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>最近看到一篇文章介绍Metaparticle， 就花了点时间看了看。 吐槽一下， 我个人并不认为类似Metaparticle这类的框架是个好主意。</p>
+<p>Metaparticle提供在code里直接编码生docker image, kubernetes pods等等云组件，期望通过这种方式使程序员能够用本身熟悉的语言来操纵dockerfile， 减少编程时来回切换的工作量。 Metaparticle的原理是通过 annotation 或者 decorate pattern的方式在源码里嵌入docker及kubernetes需要的信息。</p>
+<p>Metaparticle提供了对java, javascript, python, ruby, go and rust 等多种语言的支持。 下面是以python为例，进行代码分析，看看他是如何实现的。</p>
+<ul>
+<li>python usage example:</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">from metaparticle import Containerize</span><br><span class="line"></span><br><span class="line">@Containerize(package=&#123;&apos;name&apos;: &apos;testcontainer&apos;, &apos;repo&apos;: &apos;brendanburns&apos;, &apos;publish&apos;: True&#125;)</span><br><span class="line">def main():</span><br><span class="line">    print(&apos;hello world&apos;)</span><br><span class="line"></span><br><span class="line">if __name__ == &apos;__main__&apos;:</span><br><span class="line">    main()</span><br></pre></td></tr></table></figure>
+<ul>
+<li>decorate function source code</li>
+</ul>
+<p>通过write_dockerfile函数来生成docker file， 然后在类Containerize里build/run image.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def write_dockerfile(package, exec_file):</span><br><span class="line">    if hasattr(package, &apos;dockerfile&apos;) and package.dockerfile is not None:</span><br><span class="line">        shutil.copy(package.dockerfile, &apos;Dockerfile&apos;)</span><br><span class="line">        return</span><br><span class="line"></span><br><span class="line">    copy_files = &quot;\n&quot;.join([addFile.render() for addFile in package.additionalFiles])</span><br><span class="line"></span><br><span class="line">    with open(&apos;Dockerfile&apos;, &apos;w+t&apos;) as f:</span><br><span class="line">        f.write(&quot;&quot;&quot;FROM python:&#123;version&#125;-alpine</span><br><span class="line">COPY ./ /app/</span><br><span class="line">&#123;copy_files&#125;</span><br><span class="line">RUN pip install --no-cache -r /app/requirements.txt</span><br><span class="line">CMD python -u /app/&#123;exec_file&#125;</span><br><span class="line">&quot;&quot;&quot;.format(version=package.py_version,</span><br><span class="line">           exec_file=exec_file,</span><br><span class="line">copy_files=copy_files))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">class Containerize(object):</span><br><span class="line"></span><br><span class="line">    def __init__(self, runtime=&#123;&#125;, package=&#123;&#125;):</span><br><span class="line">        self.runtime = option.load(option.RuntimeOptions, runtime)</span><br><span class="line">        self.package = option.load(option.PackageOptions, package)</span><br><span class="line">        self.image = &quot;&#123;repo&#125;/&#123;name&#125;:latest&quot;.format(</span><br><span class="line">            repo=self.package.repository,</span><br><span class="line">            name=self.package.name</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">        self.builder = builder.select(self.package.builder)</span><br><span class="line">        self.runner = runner.select(self.runtime.executor)</span><br><span class="line"></span><br><span class="line">    def __call__(self, func):</span><br><span class="line">        def wrapped(*args, **kwargs):</span><br><span class="line">            if is_in_docker_container():</span><br><span class="line">                return func(*args, **kwargs)</span><br><span class="line"></span><br><span class="line">            exec_file = sys.argv[0]</span><br><span class="line">            slash_ix = exec_file.find(&apos;/&apos;)</span><br><span class="line">            if slash_ix != -1:</span><br><span class="line">                exec_file = exec_file[slash_ix:]</span><br><span class="line"></span><br><span class="line">            write_dockerfile(self.package, exec_file)</span><br><span class="line">            self.builder.build(self.image)</span><br><span class="line"></span><br><span class="line">            if self.package.publish:</span><br><span class="line">                self.builder.publish(self.image)</span><br><span class="line"></span><br><span class="line">            def signal_handler(signal, frame):</span><br><span class="line">                self.runner.cancel(self.package.name)</span><br><span class="line">                sys.exit(0)</span><br><span class="line">            signal.signal(signal.SIGINT, signal_handler)</span><br><span class="line"></span><br><span class="line">            self.runner.run(self.image, self.package.name, self.runtime)</span><br><span class="line"></span><br><span class="line">            return self.runner.logs(self.package.name)</span><br><span class="line">        return wrapped</span><br></pre></td></tr></table></figure>
+<p>这种Metaparticle方式的问题在于生成docker image的方式太死了而且严重的依赖Metaparticle本身的实现， 而且配置的改动要改code，容易引起问题。我认为解决这个痛点的方式，应该从编译模块入手。例如在对于Java，可以在maven里加入插件来实现直接生成部署docker image。</p>
+<h2 id="Refer-to"><a href="#Refer-to" class="headerlink" title="Refer to:"></a>Refer to:</h2><ul>
+<li><a href="https://metaparticle.io/tutorials/python/" target="_blank" rel="noopener">https://metaparticle.io/tutorials/python/</a></li>
+<li><a href="https://www.infoq.com/articles/metaparticle-pulumi-ballerina?utm_source=articles_about_Containers&amp;utm_medium=link&amp;utm_campaign=Containers" target="_blank" rel="noopener">https://www.infoq.com/articles/metaparticle-pulumi-ballerina?utm_source=articles_about_Containers&amp;utm_medium=link&amp;utm_campaign=Containers</a></li>
+</ul>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2018/10/01/learn-go/" data-toggle="tooltip" data-placement="top"
+                           title="go语言设计中几个有意思的地方。">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2018/09/29/ssh-proxy/" data-toggle="tooltip" data-placement="top"
+                           title="通过ssh使用socket5代理访问github">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Refer-to"><span class="toc-text">Refer to:</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Metaparticle"
+                           title="Metaparticle">Metaparticle</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; 亮随笔 2019
+                    <br>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="../../../../js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../../../../js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../../../../js/blog.js"></script>
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://lu-liang.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src=""><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+</body>
+
+</html>

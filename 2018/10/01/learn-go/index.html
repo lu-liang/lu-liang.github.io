@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="lu liang 在Github上的个人博客">
+    <meta name="keyword" content="AI, Cloud">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="亮随笔" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        go语言设计中几个有意思的地方。｜Liang&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://lu-liang.github.io/2018/10/01/learn-go/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="../../../../css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../../../../css/blog-style.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="../../../../css/syntax.css"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- hexo-inject:begin --><!-- hexo-inject:end --><!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    亮随笔
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>go语言设计中几个有意思的地方。</h1>
+                    
+                    <span class="meta">
+                         作者 Lu Liang
+                        <span>
+                          日期 2018-10-01
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#go"
+                           title="go">go</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            go语言设计中几个有意思的地方。
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>go语言的成功是典型实用主义思维的成功。go语言就像是一个面向过程（C），面向对象（JAVA）及函数编程（javascript）的揉合体，充分消化吸取这些编程思想中的最实用点。在go中，我们可以看到，C的结构体和指针，JAVA的接口，及函数编程中函数是一等公民等等特性。下面我们就来浅析一下这些有意思的地方。</p>
+<h2 id="指针的运用。"><a href="#指针的运用。" class="headerlink" title="指针的运用。"></a>指针的运用。</h2><p>C/C++中，最容易出问题，最令人诟病的就是指针。当初在JAVA的设计中为了解决这个问题，就彻底抛弃了指针。虽然go保留了指针，但是go编译器帮助做了优化， 使用起来更加自然。</p>
+<ul>
+<li>编译器帮你进行指针类型的隐式转换</li>
+</ul>
+<p>如下例：通过指针employeeOfTheMonth和操作符. 就像Java一样很自然的设置Position</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">var employeeOfTheMonth *Employee = &amp;dilbert</span><br><span class="line">employeeOfTheMonth.Position += &quot; (proactive team player)&quot;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>调用对象方法时，也一样。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">pptr.Distance(q) 等价于 (*pptr).Distance(q)</span><br></pre></td></tr></table></figure>
+<ul>
+<li>操作指针时，也只是更新内容而不是指针本身。这样就减少了C/C++中使用指针带来的内存问题。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">func incr(p *int) int &#123;</span><br><span class="line">*p++ // 改变指针P指向的变量的值，而不是指针P</span><br><span class="line">return *p</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="函数是一等公民"><a href="#函数是一等公民" class="headerlink" title="函数是一等公民"></a>函数是一等公民</h2><p>函数作为一等公民可以赋值，也可以作为函数的输入输出值。 </p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">func square(n int) int &#123; return n * n &#125;</span><br><span class="line">func negative(n int) int &#123; return -n &#125;</span><br><span class="line">func product(m, n int) int &#123; return m * n &#125;</span><br><span class="line"></span><br><span class="line">f := square</span><br><span class="line">fmt.Println(f(3)) // &quot;9&quot;</span><br><span class="line"></span><br><span class="line">f = negative</span><br><span class="line">fmt.Println(f(3)) // &quot;-3&quot;</span><br><span class="line">fmt.Printf(&quot;%T\n&quot;, f) // &quot;func(int) int&quot;</span><br><span class="line"></span><br><span class="line">f = product // compile error: can&apos;t assign func(int, int) int to func(int) int</span><br></pre></td></tr></table></figure>
+<h2 id="结构体Tag。"><a href="#结构体Tag。" class="headerlink" title="结构体Tag。"></a>结构体Tag。</h2><p>JSON对象几乎是WEB开发中必不可少的，go通过结构体tag可以很自然的在结构体和JSON对象间进行自如转换。<br>例如：下面的代码就通过json.Marshal使得Year转换成JSON对象时的released。另外，如果希望输出的格式有缩进，可以使用json.MarshalInden来代替json.Marshal。<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">// 定义结构体 及 在Year，Color上加Tag</span><br><span class="line">type Movie struct &#123;</span><br><span class="line">  Title string</span><br><span class="line">  Year int `json:&quot;released&quot;`</span><br><span class="line">  Color bool `json:&quot;color,omitempty&quot;`</span><br><span class="line">  Actors []string</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 初始化 movies</span><br><span class="line">var movies = []Movie&#123;</span><br><span class="line">  &#123;Title: &quot;Casablanca&quot;, Year: 1942, Color: false,</span><br><span class="line">    Actors: []string&#123;&quot;Humphrey Bogart&quot;, &quot;Ingrid Bergman&quot;&#125;&#125;,</span><br><span class="line">  &#123;Title: &quot;Cool Hand Luke&quot;, Year: 1967, Color: true,</span><br><span class="line">    Actors: []string&#123;&quot;Paul Newman&quot;&#125;&#125;,</span><br><span class="line">  &#123;Title: &quot;Bullitt&quot;, Year: 1968, Color: true,</span><br><span class="line">    Actors: []string&#123;&quot;Steve McQueen&quot;, &quot;Jacqueline Bisset&quot;&#125;&#125;,</span><br><span class="line">  // ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 转换成json</span><br><span class="line">data, err := json.Marshal(movies)</span><br><span class="line">if err != nil &#123;</span><br><span class="line">  log.Fatalf(&quot;JSON marshaling failed: %s&quot;, err)</span><br><span class="line">&#125;</span><br><span class="line">fmt.Printf(&quot;%s\n&quot;, data)</span><br><span class="line"></span><br><span class="line">// 输出结果</span><br><span class="line">[&#123;&quot;Title&quot;:&quot;Casablanca&quot;,&quot;released&quot;:1942,&quot;Actors&quot;:[&quot;Humphrey Bogart&quot;,&quot;Ingr</span><br><span class="line">id Bergman&quot;]&#125;,&#123;&quot;Title&quot;:&quot;Cool Hand Luke&quot;,&quot;released&quot;:1967,&quot;color&quot;:true,&quot;Ac</span><br><span class="line">tors&quot;:[&quot;Paul Newman&quot;]&#125;,&#123;&quot;Title&quot;:&quot;Bullitt&quot;,&quot;released&quot;:1968,&quot;color&quot;:true,&quot;</span><br><span class="line">Actors&quot;:[&quot;Steve McQueen&quot;,&quot;Jacqueline Bisset&quot;]&#125;]</span><br></pre></td></tr></table></figure></p>
+<h2 id="模版文件使得格式化输出更加丰富"><a href="#模版文件使得格式化输出更加丰富" class="headerlink" title="模版文件使得格式化输出更加丰富"></a>模版文件使得格式化输出更加丰富</h2><p>go中支持text/template和html/template等模版文件，下面的代码就是以text/template为例，来看看如何使用template。</p>
+<ol>
+<li><p>定义模版文件</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">const templ = `&#123;&#123;.TotalCount&#125;&#125; issues:</span><br><span class="line">  &#123;&#123;range .Items&#125;&#125;----------------------------------------</span><br><span class="line">  Number: &#123;&#123;.Number&#125;&#125;</span><br><span class="line">  User: &#123;&#123;.User.Login&#125;&#125;</span><br><span class="line">  Title: &#123;&#123;.Title | printf &quot;%.64s&quot;&#125;&#125;</span><br><span class="line">  Age: &#123;&#123;.CreatedAt | daysAgo&#125;&#125; days</span><br><span class="line">&#123;&#123;end&#125;&#125;`</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>解析模版文件，创建模版对象并注册模版文件中要使用的函数</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">// 定义函数</span><br><span class="line">func daysAgo(t time.Time) int &#123;</span><br><span class="line">  return int(time.Since(t).Hours() / 24)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// call .New .Funcs .Parse</span><br><span class="line">report, err := template.New(&quot;report&quot;).</span><br><span class="line">  Funcs(template.FuncMap&#123;&quot;daysAgo&quot;: daysAgo&#125;).</span><br><span class="line">  Parse(templ)</span><br><span class="line">if err != nil &#123;</span><br><span class="line">  log.Fatal(err)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>调用模版对象，进行输出。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">var report = template.Must(template.New(&quot;issuelist&quot;).</span><br><span class="line">  Funcs(template.FuncMap&#123;&quot;daysAgo&quot;: daysAgo&#125;).</span><br><span class="line">  Parse(templ))</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line">  result, err := github.SearchIssues(os.Args[1:])</span><br><span class="line">  if err != nil &#123;</span><br><span class="line">    log.Fatal(err)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  if err := report.Execute(os.Stdout, result); err != nil &#123;</span><br><span class="line">    log.Fatal(err)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="关注于数据结构及其行为。"><a href="#关注于数据结构及其行为。" class="headerlink" title="关注于数据结构及其行为。"></a>关注于数据结构及其行为。</h2><p>go和Java等面向对象编程语言相比，在面向对象方面进行了简化。 例如：没有访问级别， 没有继承（通过组合来实现继承）；go重点关注于数据结构本事及其行为（这里指方法和实现的接口）。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">//通过组合来实现继承的例子</span><br><span class="line"></span><br><span class="line">import &quot;image/color&quot;</span><br><span class="line"></span><br><span class="line">type Point struct&#123; X, Y float64 &#125;</span><br><span class="line"></span><br><span class="line">type ColoredPoint struct &#123;</span><br><span class="line">  Point</span><br><span class="line">  Color color.RGBA</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">var cp ColoredPoint</span><br><span class="line">cp.X = 1  // &lt;--- assign 1 to cp.Point.X</span><br><span class="line">fmt.Println(cp.Point.X) // &quot;1&quot;</span><br><span class="line">cp.Point.Y = 2</span><br><span class="line">fmt.Println(cp.Y) // &quot;2&quot;</span><br></pre></td></tr></table></figure>
+<h2 id="defer关键字"><a href="#defer关键字" class="headerlink" title="defer关键字"></a>defer关键字</h2><p>defer关键字确保了资源的释放，相当于Java中的finally关键字。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">func Balance() int &#123;</span><br><span class="line">mu.Lock()</span><br><span class="line">defer mu.Unlock()</span><br><span class="line">return balance</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Goroutine和CSP并发模型。"><a href="#Goroutine和CSP并发模型。" class="headerlink" title="Goroutine和CSP并发模型。"></a>Goroutine和CSP并发模型。</h2><p>下面是一个使用goroutine和channel的例子：数据经过channel就像pipeline一样被不同的goroutine处理。# counter -&gt; squarter -&gt; printer</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">func counter(out chan&lt;- int) &#123;</span><br><span class="line">  for x := 0; x &lt; 100; x++ &#123;</span><br><span class="line">    out &lt;- x</span><br><span class="line">  &#125;</span><br><span class="line">  close(out)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">func squarer(out chan&lt;- int, in &lt;-chan int) &#123;</span><br><span class="line">  for v := range in &#123;</span><br><span class="line">    out &lt;- v * v</span><br><span class="line">  &#125;</span><br><span class="line">  close(out)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">func printer(in &lt;-chan int) &#123;</span><br><span class="line">  for v := range in &#123;</span><br><span class="line">    fmt.Println(v)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line">  naturals := make(chan int)</span><br><span class="line">  squares := make(chan int)</span><br><span class="line">  go counter(naturals)</span><br><span class="line">  go squarer(squares, naturals)</span><br><span class="line">  printer(squares)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>goroutine 是Go语言中并发的执行单位。从OS的角度来看真正工作的是线程，goroutine和线程的关系如下：</p>
+<p>一个M会对应一个内核线程，一个M也会连接一个上下文P，一个上下文P相当于一个“处理器”，一个上下文连接一个或者多个Goroutine。P(Processor)的数量是在启动时被设置为环境变量GOMAXPROCS的值，或者通过运行时调用函数runtime.GOMAXPROCS()进行设置。Processor数量固定意味着任意时刻只有固定数量的线程在运行go代码。Goroutine中就是我们要执行并发的代码。图中P正在执行的Goroutine为蓝色的；处于待执行状态的Goroutine为灰色的，灰色的Goroutine形成了一个队列runqueues</p>
+<p>三者关系的宏观的图为：<br><img src="/2018/10/01/learn-go/goroutine_scheduler.png" title="go_scheduler"></p>
+<p>go语言在os用户空间中设计了goroutine，通过dynamice stack（一个goroutine 2k-1G) 及上图的 m:n scheduler成功在多核处理器上实现了大量的并发。</p>
+<p>相比较actor模型的并发可以扩展到多个机器上，go是如何支持扩展到多个机器上的呢， channel over rpc, message queue？</p>
+<p>附1，其它语言在协程上的支持如下：<br><img src="/2018/10/01/learn-go/coroutine.jpg" title="coroutine_on_programing"></p>
+<p>附2，Actor和CSP模型：<br><img src="/2018/10/01/learn-go/actor.png" title="ACTOR"></p>
+<img src="/2018/10/01/learn-go/csp.png" title="CSP">
+<h2 id="性能优化"><a href="#性能优化" class="headerlink" title="性能优化"></a>性能优化</h2><p>go注重性能优化，测试框架中自带了Benchmark测试和性能profile报告.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">import &quot;testing&quot;</span><br><span class="line"></span><br><span class="line">func BenchmarkIsPalindrome(b *testing.B) &#123;</span><br><span class="line">  for i := 0; i &lt; b.N; i++ &#123;</span><br><span class="line">    IsPalindrome(&quot;A man, a plan, a canal: Panama&quot;)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">$ go test -cpuprofile=cpu.out</span><br><span class="line">$ go test -blockprofile=block.out</span><br><span class="line">$ go test -memprofile=mem.out</span><br></pre></td></tr></table></figure>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2018/10/08/jupyter-spark/" data-toggle="tooltip" data-placement="top"
+                           title="jupyter与spark集成的几种方法">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2018/09/29/Metaparticle/" data-toggle="tooltip" data-placement="top"
+                           title="使用Metaparticle在code中直接编码docker/kubernetes是个好主意吗？">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#指针的运用。"><span class="toc-text">指针的运用。</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#函数是一等公民"><span class="toc-text">函数是一等公民</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#结构体Tag。"><span class="toc-text">结构体Tag。</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#模版文件使得格式化输出更加丰富"><span class="toc-text">模版文件使得格式化输出更加丰富</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#关注于数据结构及其行为。"><span class="toc-text">关注于数据结构及其行为。</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#defer关键字"><span class="toc-text">defer关键字</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Goroutine和CSP并发模型。"><span class="toc-text">Goroutine和CSP并发模型。</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#性能优化"><span class="toc-text">性能优化</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#go"
+                           title="go">go</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; 亮随笔 2019
+                    <br>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="../../../../js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../../../../js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../../../../js/blog.js"></script>
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://lu-liang.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src=""><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+</body>
+
+</html>

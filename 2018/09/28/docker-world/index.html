@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="lu liang 在Github上的个人博客">
+    <meta name="keyword" content="AI, Cloud">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="亮随笔" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        浅析docker, kubernets规范及实现｜Liang&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://lu-liang.github.io/2018/09/28/docker-world/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="../../../../css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../../../../css/blog-style.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="../../../../css/syntax.css"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- hexo-inject:begin --><!-- hexo-inject:end --><!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    亮随笔
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>浅析docker, kubernets规范及实现</h1>
+                    
+                    <span class="meta">
+                         作者 Lu Liang
+                        <span>
+                          日期 2018-09-28
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#OCI"
+                           title="OCI">OCI</a>
+                        
+                        <a class="tag" href="/tags/#Docker"
+                           title="Docker">Docker</a>
+                        
+                        <a class="tag" href="/tags/#Kubernetes"
+                           title="Kubernetes">Kubernetes</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            浅析docker, kubernets规范及实现
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>没有规矩，不成方圆， 所有的事物都是有迹可循；在容器的世界里也不例外。现在，我们就从规范入手来简单的梳理一下docker, kubernets。</p>
+<h2 id="开源容器的业界规范"><a href="#开源容器的业界规范" class="headerlink" title="开源容器的业界规范"></a>开源容器的业界规范</h2><p>目前，容器的开源标准是OCI。在介绍OCI之前，我们先聊聊它的前世<a href="https://github.com/appc/spec/" target="_blank" rel="noopener">appc</a>。虽然appc已经不玩了，但是并不意味着它没有意义。OCI规范很多都是从appc那边一脉相承的，所以多看看，了解一下也是很有帮助。</p>
+<h3 id="APPC"><a href="#APPC" class="headerlink" title="APPC"></a>APPC</h3><p><a href="https://github.com/appc/spec/" target="_blank" rel="noopener">The App Container (appc)</a> is an open specification that defines several aspects of how to run applications in containers: an image format, runtime environment, and discovery protocol.</p>
+<p>appc 主要定义了下面三个方面的协议。</p>
+<ol>
+<li>The App Container Image format (ACI)</li>
+<li>The App Container Executor (ACE)</li>
+<li>App Container Image Discovery</li>
+</ol>
+<p>这个规范的实现可以参考下面的产品列表。</p>
+<blockquote>
+<p>Mature implementations of appc</p>
+<ul>
+<li><a href="https://github.com/3ofcoins/jetpack" target="_blank" rel="noopener">Jetpack</a> - FreeBSD/Go</li>
+<li><a href="http://kurma.io" target="_blank" rel="noopener">Kurma</a> - Linux/Go</li>
+<li><a href="https://coreos.com/rkt/" target="_blank" rel="noopener">rkt</a> - Linux/Go -&gt; A security-minded, standards-based container engine</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>Partial implementations of appc</p>
+<ul>
+<li><a href="https://github.com/cdaylward/libappc" target="_blank" rel="noopener">libappc</a> - C++ library</li>
+<li><a href="https://github.com/cdaylward/nosecone" target="_blank" rel="noopener">Nose Cone</a> - Linux/C++</li>
+</ul>
+</blockquote>
+<h3 id="OCI"><a href="#OCI" class="headerlink" title="OCI"></a>OCI</h3><p><a href="https://www.opencontainers.org/" target="_blank" rel="noopener">Open Container Initiative (OCI)</a> is an open governance structure for the express purpose of creating open industry standards around container formats and runtime.</p>
+<p><a href="https://www.opencontainers.org/" target="_blank" rel="noopener">Open Container Initiative (OCI)</a>主要包括下面两个方面：</p>
+<ol>
+<li><a href="https://github.com/opencontainers/image-spec" target="_blank" rel="noopener">OCI Image Format Specification</a> 对应于ACI</li>
+<li><a href="https://github.com/opencontainers/runtime-spec" target="_blank" rel="noopener">OCI Runtime Specification</a> 对应于ACE</li>
+</ol>
+<p>OCI的实现</p>
+<ul>
+<li><a href="https://github.com/opencontainers/runc" target="_blank" rel="noopener">runC</a>, which is donated by Docker Inc and is on the top of <a href="https://github.com/docker/libcontainer" target="_blank" rel="noopener">libcontainer</a>。<br>相对于docker, runC是更加轻量级的运行时，并且支持容器热迁移。 下图为runC的运行原理：<img src="/2018/09/28/docker-world/runC.jpg" title="runC">
+</li>
+</ul>
+<ul>
+<li><p><a href="https://containerd.io" target="_blank" rel="noopener">containerd</a>. It was initiated by Docker Inc and fully leverages run to meet the OCI. The following is the architecture chart of containerd:</p>
+<img src="/2018/09/28/docker-world/containerd_architecture.png" title="Containerd Architecture">
+<ul>
+<li>Using plugin <a href="https://github.com/containerd/cri" target="_blank" rel="noopener">cri-containerd</a> to support Kubernetes<img src="/2018/09/28/docker-world/kubelet-cri.png" title="CRI">
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><a href="https://linuxcontainers.org/lxd/" target="_blank" rel="noopener">LXD</a> which is a next generation system container manager and is built on the top of LXC.</li>
+</ul>
+<p>上面几个实现的互相依赖关系如下：</p>
+<ul>
+<li>containerd –&gt; runC –&gt; libcontainer</li>
+<li>lxd –&gt; lxc</li>
+</ul>
+<h2 id="Kubernetes的接口规范"><a href="#Kubernetes的接口规范" class="headerlink" title="Kubernetes的接口规范"></a>Kubernetes的接口规范</h2><p>Kubernetes 定义了以下的规范，这样可以灵活切换支持不同的runtime engine， virtual network 及 storage。</p>
+<p><strong><a href="https://github.com/kubernetes/kubernetes/blob/242a97307b34076d5d8f5bbeb154fa4d97c9ef1d/docs/devel/container-runtime-interface.md" target="_blank" rel="noopener">CRI: Container Runtime Interface</a></strong> consists of a protofbuf API, specifications/requirements and libraries for container runtimes to integrate with kubelet on a node.  </p>
+<p>对于这个runtime规范，目前有以下的实现。这就意味着kubernets的runtime可以有下面的替代：</p>
+<ul>
+<li><a href="https://github.com/kubernetes-incubator/cri-o" target="_blank" rel="noopener">cri-o</a> OCI conformant runtimes.</li>
+<li><a href="https://github.com/kubernetes-incubator/rktlet" target="_blank" rel="noopener">rktlet</a> the rkt container runtime.</li>
+<li><a href="https://github.com/kubernetes/frakti" target="_blank" rel="noopener">frakti</a> hypervisor-based container runtimes.</li>
+<li><a href="https://github.com/kubernetes/kubernetes/tree/release-1.5/pkg/kubelet/dockershim" target="_blank" rel="noopener">docker CRI shim</a> –&gt; Kubernetes default implementation.<img src="/2018/09/28/docker-world/kubelet-cri2.png" title="OverviewOfCRI">
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[k8s@iml11 ~]$ kubectl version</span><br><span class="line">Client Version: version.Info&#123;Major:&quot;1&quot;, Minor:&quot;11&quot;, GitVersion:&quot;v1.11.1&quot;, GitCommit:&quot;b1b29978270dc22fecc592ac55d903350454310a&quot;, GitTreeState:&quot;clean&quot;, BuildDate:&quot;2018-07-17T18:53:20Z&quot;, GoVersion:&quot;go1.10.3&quot;, Compiler:&quot;gc&quot;, Platform:&quot;linux/amd64&quot;&#125;</span><br><span class="line">Server Version: version.Info&#123;Major:&quot;1&quot;, Minor:&quot;11&quot;, GitVersion:&quot;v1.11.1&quot;, GitCommit:&quot;b1b29978270dc22fecc592ac55d903350454310a&quot;, GitTreeState:&quot;clean&quot;, BuildDate:&quot;2018-07-17T18:43:26Z&quot;, GoVersion:&quot;go1.10.3&quot;, Compiler:&quot;gc&quot;, Platform:&quot;linux/amd64&quot;&#125;</span><br><span class="line">[root@iml11 linux-amd64]# ps -ef|grep docker</span><br><span class="line">root      7189  2083  0 Aug03 ?        00:00:06 /usr/bin/docker-containerd-shim-current 3389a4aafa8188545b8f501143ac75344d2558204bcf5823c0fc568ccb775827 /var/run/docker/libcontainerd/3389a4aafa8188545b8f501143ac75344d2558204bcf5823c0fc568ccb775827 /usr/libexec/docker/docker-runc-current</span><br><span class="line">root     22095  2083  0 Aug09 ?        00:00:05 /usr/bin/docker-containerd-shim-current 473e9a6f97817a79091c49a282fe9b4d6db66d1f495ce555fe53078dbc109146 /var/run/docker/libcontainerd/473e9a6f97817a79091c49a282fe9b4d6db66d1f495ce555fe53078dbc109146 /usr/libexec/docker/docker-runc-current</span><br><span class="line">root     22273  2083  0 Aug09 ?        01:20:42 /usr/bin/docker-containerd-shim-current 0e24b9c7dce08d37f951ddb721b6895861a167e7f64ce401f392f34d5defbb47 /var/run/docker/libcontainerd/0e24b9c7dce08d37f951ddb721b6895861a167e7f64ce401f392f34d5defbb47 /usr/libexec/docker/docker-runc-current</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>如果在配置运行kubernets时，底层运行引擎不使用docker，可以通过cri-containerd进行切换。架构如下图所示：</p>
+<img src="/2018/09/28/docker-world/kubelet_runtime.png" title="dockershimToCri-containerd">
+<img src="/2018/09/28/docker-world/kubelet-cri-containerd.png" title="OverviewOfCRI-containerd">
+<p>同样我们可以使用crictl去和container交互。<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[root@iml11 ~]# crictl -h</span><br><span class="line">NAME:</span><br><span class="line">   crictl - client for CRI</span><br><span class="line"></span><br><span class="line">USAGE:</span><br><span class="line">   crictl [global options] command [command options] [arguments...]</span><br><span class="line"></span><br><span class="line">VERSION:</span><br><span class="line">   1.11.0</span><br><span class="line"></span><br><span class="line">COMMANDS:</span><br><span class="line">     attach        Attach to a running container</span><br><span class="line">     create        Create a new container</span><br><span class="line">     exec          Run a command in a running container</span><br><span class="line">     version       Display runtime version information</span><br><span class="line">     images        List images</span><br><span class="line">     inspect       Display the status of one or more containers</span><br><span class="line">     inspecti      Return the status of one or more images</span><br><span class="line">     inspectp      Display the status of one or more pods</span><br><span class="line">     logs          Fetch the logs of a container</span><br><span class="line">     port-forward  Forward local port to a pod</span><br><span class="line">     ps            List containers</span><br><span class="line">     pull          Pull an image from a registry</span><br><span class="line">     runp          Run a new pod</span><br><span class="line">     rm            Remove one or more containers</span><br><span class="line">     rmi           Remove one or more images</span><br><span class="line">     rmp           Remove one or more pods</span><br><span class="line">     pods          List pods</span><br><span class="line">     start         Start one or more created containers</span><br><span class="line">     info          Display information of the container runtime</span><br><span class="line">     stop          Stop one or more running containers</span><br><span class="line">     stopp         Stop one or more running pods</span><br><span class="line">     update        Update one or more running containers</span><br><span class="line">     config        Get and set crictl options</span><br><span class="line">     stats         List container(s) resource usage statistics</span><br><span class="line">     completion    Output bash shell completion code</span><br><span class="line">     help, h       Shows a list of commands or help for one command</span><br><span class="line"></span><br><span class="line">GLOBAL OPTIONS:</span><br><span class="line">   --config value, -c value            Location of the client config file (default: &quot;/etc/crictl.yaml&quot;) [$CRI_CONFIG_FILE]</span><br><span class="line">   --debug, -D                         Enable debug mode</span><br><span class="line">   --image-endpoint value, -i value    Endpoint of CRI image manager service [$IMAGE_SERVICE_ENDPOINT]</span><br><span class="line">   --runtime-endpoint value, -r value  Endpoint of CRI container runtime service (default: &quot;unix:///var/run/dockershim.sock&quot;) [$CONTAINER_RUNTIME_ENDPOINT]</span><br><span class="line">   --timeout value, -t value           Timeout of connecting to the server (default: 10s)</span><br><span class="line">   --help, -h                          show help</span><br><span class="line">   --version, -v                       print the version</span><br><span class="line">[root@iml11 ~]#</span><br></pre></td></tr></table></figure></p>
+<p><strong><a href="https://github.com/containernetworking/cni" target="_blank" rel="noopener">CNI: Container Network Interface</a></strong> is a <a href="https://www.cncf.io/" target="_blank" rel="noopener">Cloud Native Computing Foundation</a> project, consists of a specification and libraries for writing plugins to configure network interfaces in Linux containers, along with a number of supported plugins.</p>
+<p>对于网络层，可以参考下面的第三方实现：</p>
+<table>
+<thead>
+<tr>
+<th>3rd plugins</th>
+<th>More Information</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Calico</td>
+<td>a layer 3 virtual network</td>
+</tr>
+<tr>
+<td><strong>Weave</strong></td>
+<td>a multi-host Docker network, default in kubernets</td>
+</tr>
+<tr>
+<td>Contiv Networking</td>
+<td>policy networking for various use cases</td>
+</tr>
+<tr>
+<td>SR-IOV</td>
+</tr>
+<tr>
+<td>Cilium</td>
+<td>BPF &amp; XDP for containers</td>
+</tr>
+<tr>
+<td>Infoblox</td>
+<td>enterprise IP address management for containers</td>
+</tr>
+<tr>
+<td>Multus</td>
+<td>a Multi plugin</td>
+</tr>
+<tr>
+<td>Romana</td>
+<td>Layer 3 CNI plugin supporting network policy for Kubernetes</td>
+</tr>
+<tr>
+<td>CNI-Genie</td>
+<td>generic CNI network plugin</td>
+</tr>
+<tr>
+<td>Nuage CNI</td>
+<td>Nuage Networks SDN plugin for network policy kubernetes support</td>
+</tr>
+<tr>
+<td>Silk</td>
+<td>a CNI plugin designed for Cloud Foundry</td>
+</tr>
+<tr>
+<td>Linen</td>
+<td>a CNI plugin designed for overlay networks with Open vSwitch and fit in SDN/OpenFlow network environment</td>
+</tr>
+<tr>
+<td>Vhostuser</td>
+<td>a Dataplane network plugin - Supports OVS-DPDK &amp; VPP</td>
+</tr>
+<tr>
+<td>Amazon ECS CNI Plugins</td>
+<td>a collection of CNI Plugins to configure containers with Amazon EC2 elastic network interfaces (ENIs)</td>
+</tr>
+<tr>
+<td>Bonding CNI</td>
+<td>a Link aggregating plugin to address failover and high availability network</td>
+</tr>
+<tr>
+<td>ovn-kubernetes</td>
+<td>an container network plugin built on Open vSwitch (OVS) and Open Virtual Networking (OVN) with support for both Linux and Windows</td>
+</tr>
+<tr>
+<td>Juniper Contrail / TungstenFabric</td>
+<td>Provides overlay SDN solution, delivering multicloud networking, hybrid cloud networking, simultaneous overlay-underlay support, network policy enforcement, network isolation, service chaining and flexible load balancing</td>
+</tr>
+<tr>
+<td>Knitter</td>
+<td>a CNI plugin supporting multiple networking for Kubernetes</td>
+</tr>
+</tbody>
+</table>
+<p><strong><a href="https://github.com/container-storage-interface/spec/blob/master/spec.md" target="_blank" rel="noopener">CSI: Container Storage Interface</a></strong> will enable storage vendors (SP) to develop a plugin once and have it work across a number of container orchestration (CO) systems.</p>
+<p>对于存储层，目前至少有以下的实现：</p>
+<ul>
+<li>Sample Drivers</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>More Information</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Flexvolume</td>
+<td>Sample</td>
+</tr>
+<tr>
+<td>HostPath</td>
+<td>Only use for a single node tests. See the Example page for Kubernetes-specific instructions.</td>
+</tr>
+<tr>
+<td>In-memory Sample Mock Driver</td>
+<td>The sample mock driver used for csi-sanity</td>
+</tr>
+<tr>
+<td>NFS</td>
+<td>Sample</td>
+</tr>
+<tr>
+<td>VFS Driver</td>
+<td>A CSI plugin that provides a virtual file system.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Production Drivers</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>More Information</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cinder</td>
+<td>A Container Storage Interface (CSI) Storage Plug-in for Cinder</td>
+</tr>
+<tr>
+<td>DigitalOcean Block Storage</td>
+<td>A Container Storage Interface (CSI) Driver for DigitalOcean Block Storage</td>
+</tr>
+<tr>
+<td>GCE Persistent Disk</td>
+<td>A Container Storage Interface (CSI) Storage Plugin for Google Compute Engine Persistent Disk</td>
+</tr>
+<tr>
+<td>OpenSDS</td>
+<td>For more information, please visit releases and <a href="https://github.com/opensds/nbp/tree/master/csi" target="_blank" rel="noopener">https://github.com/opensds/nbp/tree/master/csi</a></td>
+</tr>
+<tr>
+<td>Portworx</td>
+<td>CSI implementation is available here which can be used as an example also.</td>
+</tr>
+<tr>
+<td>RBD</td>
+<td>A Container Storage Interface (CSI) Storage RBD Plug-in for Ceph</td>
+</tr>
+<tr>
+<td>CephFS</td>
+<td>A Container Storage Interface (CSI) Storage Plug-in for CephFS</td>
+</tr>
+<tr>
+<td>ScaleIO</td>
+<td>A Container Storage Interface (CSI) Storage Plugin for DellEMC ScaleIO</td>
+</tr>
+<tr>
+<td>vSphere</td>
+<td>A Container Storage Interface (CSI) Storage Plug-in for VMware vSphere</td>
+</tr>
+<tr>
+<td>NetApp</td>
+<td>A Container Storage Interface (CSI) Storage Plug-in for NetApp’s Trident container storage orchestrator</td>
+</tr>
+<tr>
+<td>Ember CSI</td>
+<td>Multi-vendor CSI plugin supporting over 80 storage drivers to provide block and mount storage to Container Orchestration systems.</td>
+</tr>
+<tr>
+<td>Nutanix</td>
+<td>A Container Storage Interface (CSI) Storage Driver for Nutanix</td>
+</tr>
+<tr>
+<td>Quobyte</td>
+<td>A Container Storage Interface (CSI) Plugin for Quobyte</td>
+</tr>
+</tbody>
+</table>
+<h2 id="Refer-to"><a href="#Refer-to" class="headerlink" title="Refer to:"></a>Refer to:</h2><ul>
+<li><a href="https://containerd.io" target="_blank" rel="noopener">https://containerd.io</a></li>
+<li><a href="https://linuxcontainers.org/" target="_blank" rel="noopener">https://linuxcontainers.org/</a></li>
+<li><a href="https://coreos.com/rkt/docs/latest/app-container.html" target="_blank" rel="noopener">https://coreos.com/rkt/docs/latest/app-container.html</a></li>
+<li><a href="https://kubernetes-csi.github.io/docs/Drivers.html" target="_blank" rel="noopener">https://kubernetes-csi.github.io/docs/Drivers.html</a></li>
+<li><a href="http://www.infoq.com/cn/news/2017/02/Docker-Containerd-RunC" target="_blank" rel="noopener">http://www.infoq.com/cn/news/2017/02/Docker-Containerd-RunC</a></li>
+<li><a href="http://dockone.io/article/776" target="_blank" rel="noopener">http://dockone.io/article/776</a></li>
+<li><a href="https://www.infoq.com/presentations/cri-runtime-kubernetes?utm_source=presentations_about_Containers&amp;utm_medium=link&amp;utm_campaign=Containers" target="_blank" rel="noopener">https://www.infoq.com/presentations/cri-runtime-kubernetes?utm_source=presentations_about_Containers&amp;utm_medium=link&amp;utm_campaign=Containers</a></li>
+<li><a href="https://github.com/containernetworking/cni" target="_blank" rel="noopener">https://github.com/containernetworking/cni</a></li>
+</ul>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2018/09/29/ssh-proxy/" data-toggle="tooltip" data-placement="top"
+                           title="通过ssh使用socket5代理访问github">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2018/09/28/hello-world/" data-toggle="tooltip" data-placement="top"
+                           title="使用hexo, github搭建个人博客">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#开源容器的业界规范"><span class="toc-text">开源容器的业界规范</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#APPC"><span class="toc-text">APPC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OCI"><span class="toc-text">OCI</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Kubernetes的接口规范"><span class="toc-text">Kubernetes的接口规范</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Refer-to"><span class="toc-text">Refer to:</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#OCI"
+                           title="OCI">OCI</a>
+                        
+                        <a class="tag" href="/tags/#Docker"
+                           title="Docker">Docker</a>
+                        
+                        <a class="tag" href="/tags/#Kubernetes"
+                           title="Kubernetes">Kubernetes</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; 亮随笔 2019
+                    <br>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="../../../../js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../../../../js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../../../../js/blog.js"></script>
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://lu-liang.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src=""><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+</body>
+
+</html>

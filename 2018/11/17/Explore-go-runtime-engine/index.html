@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="lu liang 在Github上的个人博客">
+    <meta name="keyword" content="AI, Cloud">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="亮随笔" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        Explore go runtime engine｜Liang&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://lu-liang.github.io/2018/11/17/Explore-go-runtime-engine/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="../../../../css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../../../../css/blog-style.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="../../../../css/syntax.css"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- hexo-inject:begin --><!-- hexo-inject:end --><!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    亮随笔
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>Explore go runtime engine</h1>
+                    
+                    <span class="meta">
+                         作者 Lu Liang
+                        <span>
+                          日期 2018-11-17
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#go"
+                           title="go">go</a>
+                        
+                        <a class="tag" href="/tags/#linux"
+                           title="linux">linux</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            Explore go runtime engine
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>Go runtime engine是Go语言中非常有意思的部分。下面我们通过go的hello_world来初步分析，探索一下它的启动顺序及调用函数和源程序文件。</p>
+<h2 id="hello-world-source-code"><a href="#hello-world-source-code" class="headerlink" title="hello_world source code."></a>hello_world source code.</h2><p>This is the source code of hello_world. The change is that we add 1 minute sleep time before printing “hello world”.<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">➜  more hello_world.go</span><br><span class="line">package main</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line">	&quot;time&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line">	time.Sleep(time.Duration(60)*time.Second)</span><br><span class="line">        fmt.Printf(&quot;hello, world\n&quot;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="entry-point-of-hello-world"><a href="#entry-point-of-hello-world" class="headerlink" title="entry point of hello_world."></a>entry point of hello_world.</h2><p>Since we compile this program in linux platform. The binary execution of hello_world is ELF format. We can get the entry point with readelf command. The following output shows the entry point is <strong>“0x452590”</strong><br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">➜  file ./hello_world</span><br><span class="line">./hello_world: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, not stripped</span><br><span class="line"></span><br><span class="line">➜  readelf -h ./hello_world</span><br><span class="line">ELF 头：</span><br><span class="line">  Magic：  7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00</span><br><span class="line">  类别:                              ELF64</span><br><span class="line">  数据:                              2 补码，小端序 (little endian)</span><br><span class="line">  版本:                              1 (current)</span><br><span class="line">  OS/ABI:                            UNIX - System V</span><br><span class="line">  ABI 版本:                          0</span><br><span class="line">  类型:                              EXEC (可执行文件)</span><br><span class="line">  系统架构:                          Advanced Micro Devices X86-64</span><br><span class="line">  版本:                              0x1</span><br><span class="line">  入口点地址：              0x452590</span><br><span class="line">  程序头起点：              64 (bytes into file)</span><br><span class="line">  Start of section headers:          456 (bytes into file)</span><br><span class="line">  标志：             0x0</span><br><span class="line">  本头的大小：       64 (字节)</span><br><span class="line">  程序头大小：       56 (字节)</span><br><span class="line">  Number of program headers:         7</span><br><span class="line">  节头大小：         64 (字节)</span><br><span class="line">  节头数量：         23</span><br><span class="line">  字符串表索引节头： 3</span><br></pre></td></tr></table></figure></p>
+<h2 id="decompile-the-binary-to-asm-to-find-the-sequence-of-execution"><a href="#decompile-the-binary-to-asm-to-find-the-sequence-of-execution" class="headerlink" title="decompile the binary to asm to find the sequence of execution."></a>decompile the binary to asm to find the sequence of execution.</h2><p>At the entry point, we find that the first called function is ‘_rt0_amd64_linux’.<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">➜ readelf -s ./hello_world|grep 452590</span><br><span class="line">  2185: 0000000000452590    18 FUNC    GLOBAL DEFAULT    1 _rt0_amd64_linux</span><br></pre></td></tr></table></figure></p>
+<p>Let’s continue to decompile the binary file with objdump from the entry point. We will find it will call <strong>main</strong> function at <strong>0x4525b0</strong>. The main function will call <strong>runtime.rt0_go</strong><br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">➜  objdump -d --start-address=0x452590 ./hello_world |more</span><br><span class="line"></span><br><span class="line">./hello_world：     文件格式 elf64-x86-64</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">Disassembly of section .text:</span><br><span class="line"></span><br><span class="line">0000000000452590 &lt;_rt0_amd64_linux&gt;:</span><br><span class="line">  452590:	48 8d 74 24 08       	lea    0x8(%rsp),%rsi</span><br><span class="line">  452595:	48 8b 3c 24          	mov    (%rsp),%rdi</span><br><span class="line">  452599:	48 8d 05 10 00 00 00 	lea    0x10(%rip),%rax        # 4525b0 &lt;main&gt;</span><br><span class="line">  4525a0:	ff e0                	jmpq   *%rax</span><br><span class="line">  4525a2:	cc                   	int3</span><br><span class="line">  4525a3:	cc                   	int3</span><br><span class="line">  4525a4:	cc                   	int3</span><br><span class="line">  4525a5:	cc                   	int3</span><br><span class="line">  4525a6:	cc                   	int3</span><br><span class="line">  4525a7:	cc                   	int3</span><br><span class="line">  4525a8:	cc                   	int3</span><br><span class="line">  4525a9:	cc                   	int3</span><br><span class="line">  4525aa:	cc                   	int3</span><br><span class="line">  4525ab:	cc                   	int3</span><br><span class="line">  4525ac:	cc                   	int3</span><br><span class="line">  4525ad:	cc                   	int3</span><br><span class="line">  4525ae:	cc                   	int3</span><br><span class="line">  4525af:	cc                   	int3</span><br><span class="line"></span><br><span class="line">00000000004525b0 &lt;main&gt;:</span><br><span class="line">  4525b0:	48 8d 05 c9 c7 ff ff 	lea    -0x3837(%rip),%rax        # 44ed80 &lt;runtime.rt0_go&gt;</span><br><span class="line">  4525b7:	ff e0                	jmpq   *%rax</span><br><span class="line">  4525b9:	cc                   	int3</span><br><span class="line">  4525ba:	cc                   	int3</span><br><span class="line">  4525bb:	cc                   	int3</span><br><span class="line">  4525bc:	cc                   	int3</span><br><span class="line">  4525bd:	cc                   	int3</span><br><span class="line">  4525be:	cc                   	int3</span><br><span class="line">  4525bf:	cc                   	int3</span><br></pre></td></tr></table></figure></p>
+<p>Let’s go to 44ed80 to figure out what it did in runtime.rt0_go. By looking into the asm code, we know that it did some runtime checks with hardware and then call the following functions.</p>
+<ul>
+<li>runtime.args      (runtime/runtime1.go)     –&gt; 将argc,argv设置到static全局变量</li>
+<li>runtime.osinit    (runtime/os_linux.go)     –&gt; 设置runtime.ncpu</li>
+<li>runtime.schedinit (runtime/proc.go)         –&gt; 内存管理初始化，根据GOMAXPROCS设置使用的procs等等</li>
+<li>runtime.newproc   (runtime/proc.go)         –&gt; 新开个goroutine把runtime.main放到就绪线程队列里面</li>
+<li>runtime.mstart    (runtime/proc.go)         –&gt; 调用到调度函数schedule执行就绪线程队列中的main协程</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">➜  objdump -d --start-address=0x44ed80 ./hello_world |more</span><br><span class="line"></span><br><span class="line">./hello_world：     文件格式 elf64-x86-64</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">Disassembly of section .text:</span><br><span class="line"></span><br><span class="line">000000000044ed80 &lt;runtime.rt0_go&gt;:</span><br><span class="line">  44ed80:	48 89 f8             	mov    %rdi,%rax</span><br><span class="line">  44ed83:	48 89 f3             	mov    %rsi,%rbx</span><br><span class="line">  44ed86:	48 83 ec 27          	sub    $0x27,%rsp</span><br><span class="line">  44ed8a:	48 83 e4 f0          	and    $0xfffffffffffffff0,%rsp</span><br><span class="line">  44ed8e:	48 89 44 24 10       	mov    %rax,0x10(%rsp)</span><br><span class="line">  44ed93:	48 89 5c 24 18       	mov    %rbx,0x18(%rsp)</span><br><span class="line">  44ed98:	48 8d 3d c1 fc 0d 00 	lea    0xdfcc1(%rip),%rdi        # 52ea60 &lt;runtime.g0&gt;</span><br><span class="line">  44ed9f:	48 8d 9c 24 68 00 ff 	lea    -0xff98(%rsp),%rbx</span><br><span class="line">  44eda6:	ff</span><br><span class="line">  44eda7:	48 89 5f 10          	mov    %rbx,0x10(%rdi)</span><br><span class="line">  44edab:	48 89 5f 18          	mov    %rbx,0x18(%rdi)</span><br><span class="line">  44edaf:	48 89 1f             	mov    %rbx,(%rdi)</span><br><span class="line">  44edb2:	48 89 67 08          	mov    %rsp,0x8(%rdi)</span><br><span class="line">  44edb6:	31 c0                	xor    %eax,%eax</span><br><span class="line">  44edb8:	0f a2                	cpuid</span><br><span class="line">  44edba:	89 c6                	mov    %eax,%esi</span><br><span class="line">  44edbc:	83 f8 00             	cmp    $0x0,%eax</span><br><span class="line">  44edbf:	0f 84 01 01 00 00    	je     44eec6 &lt;runtime.rt0_go+0x146&gt;</span><br><span class="line">  44edc5:	81 fb 47 65 6e 75    	cmp    $0x756e6547,%ebx</span><br><span class="line">  44edcb:	75 1e                	jne    44edeb &lt;runtime.rt0_go+0x6b&gt;</span><br><span class="line">  44edcd:	81 fa 69 6e 65 49    	cmp    $0x49656e69,%edx</span><br><span class="line">  44edd3:	75 16                	jne    44edeb &lt;runtime.rt0_go+0x6b&gt;</span><br><span class="line">  44edd5:	81 f9 6e 74 65 6c    	cmp    $0x6c65746e,%ecx</span><br><span class="line">  44eddb:	75 0e                	jne    44edeb &lt;runtime.rt0_go+0x6b&gt;</span><br><span class="line">  44eddd:	c6 05 6e da 0f 00 01 	movb   $0x1,0xfda6e(%rip)        # 54c852 &lt;runtime.isIntel&gt;</span><br><span class="line">  44ede4:	c6 05 6b da 0f 00 01 	movb   $0x1,0xfda6b(%rip)        # 54c856 &lt;runtime.lfenceBeforeRdtsc&gt;</span><br><span class="line">  44edeb:	b8 01 00 00 00       	mov    $0x1,%eax</span><br><span class="line">  44edf0:	0f a2                	cpuid</span><br><span class="line">  44edf2:	89 05 b4 da 0f 00    	mov    %eax,0xfdab4(%rip)        # 54c8ac &lt;runtime.processorVersionInfo&gt;</span><br><span class="line">  44edf8:	f7 c2 00 00 00 04    	test   $0x4000000,%edx</span><br><span class="line">  44edfe:	0f 95 05 5c da 0f 00 	setne  0xfda5c(%rip)        # 54c861 &lt;runtime.support_sse2&gt;</span><br><span class="line">  44ee05:	f7 c1 00 02 00 00    	test   $0x200,%ecx</span><br><span class="line">  44ee0b:	0f 95 05 52 da 0f 00 	setne  0xfda52(%rip)        # 54c864 &lt;runtime.support_ssse3&gt;</span><br><span class="line">  44ee12:	f7 c1 00 00 08 00    	test   $0x80000,%ecx</span><br><span class="line">  44ee18:	0f 95 05 43 da 0f 00 	setne  0xfda43(%rip)        # 54c862 &lt;runtime.support_sse41&gt;</span><br><span class="line">  44ee1f:	f7 c1 00 00 10 00    	test   $0x100000,%ecx</span><br><span class="line">  44ee25:	0f 95 05 37 da 0f 00 	setne  0xfda37(%rip)        # 54c863 &lt;runtime.support_sse42&gt;</span><br><span class="line">  44ee2c:	f7 c1 00 00 80 00    	test   $0x800000,%ecx</span><br><span class="line">  44ee32:	0f 95 05 27 da 0f 00 	setne  0xfda27(%rip)        # 54c860 &lt;runtime.support_popcnt&gt;</span><br><span class="line">  44ee39:	f7 c1 00 00 00 02    	test   $0x2000000,%ecx</span><br><span class="line">  44ee3f:	0f 95 05 13 da 0f 00 	setne  0xfda13(%rip)        # 54c859 &lt;runtime.support_aes&gt;</span><br><span class="line">  44ee46:	f7 c1 00 00 00 08    	test   $0x8000000,%ecx</span><br><span class="line">  44ee4c:	0f 95 05 0c da 0f 00 	setne  0xfda0c(%rip)        # 54c85f &lt;runtime.support_osxsave&gt;</span><br><span class="line">  44ee53:	f7 c1 00 00 00 10    	test   $0x10000000,%ecx</span><br><span class="line">  44ee59:	0f 95 05 fa d9 0f 00 	setne  0xfd9fa(%rip)        # 54c85a &lt;runtime.support_avx&gt;</span><br><span class="line">  44ee60:	83 fe 07             	cmp    $0x7,%esi</span><br><span class="line">  44ee63:	7c 3d                	jl     44eea2 &lt;runtime.rt0_go+0x122&gt;</span><br><span class="line">  44ee65:	b8 07 00 00 00       	mov    $0x7,%eax</span><br><span class="line">  44ee6a:	31 c9                	xor    %ecx,%ecx</span><br><span class="line">  44ee6c:	0f a2                	cpuid</span><br><span class="line">  44ee6e:	f7 c3 08 00 00 00    	test   $0x8,%ebx</span><br><span class="line">  44ee74:	0f 95 05 e1 d9 0f 00 	setne  0xfd9e1(%rip)        # 54c85c &lt;runtime.support_bmi1&gt;</span><br><span class="line">  44ee7b:	f7 c3 20 00 00 00    	test   $0x20,%ebx</span><br><span class="line">  44ee81:	0f 95 05 d3 d9 0f 00 	setne  0xfd9d3(%rip)        # 54c85b &lt;runtime.support_avx2&gt;</span><br><span class="line">  44ee88:	f7 c3 00 01 00 00    	test   $0x100,%ebx</span><br><span class="line">  44ee8e:	0f 95 05 c8 d9 0f 00 	setne  0xfd9c8(%rip)        # 54c85d &lt;runtime.support_bmi2&gt;</span><br><span class="line">  44ee95:	f7 c3 00 02 00 00    	test   $0x200,%ebx</span><br><span class="line">  44ee9b:	0f 95 05 bc d9 0f 00 	setne  0xfd9bc(%rip)        # 54c85e &lt;runtime.support_erms&gt;</span><br><span class="line">  44eea2:	80 3d b6 d9 0f 00 01 	cmpb   $0x1,0xfd9b6(%rip)        # 54c85f &lt;runtime.support_osxsave&gt;</span><br><span class="line">  44eea9:	75 0d                	jne    44eeb8 &lt;runtime.rt0_go+0x138&gt;</span><br><span class="line">  44eeab:	31 c9                	xor    %ecx,%ecx</span><br><span class="line">  44eead:	0f 01 d0             	xgetbv</span><br><span class="line">  44eeb0:	83 e0 06             	and    $0x6,%eax</span><br><span class="line">  44eeb3:	83 f8 06             	cmp    $0x6,%eax</span><br><span class="line">  44eeb6:	74 0e                	je     44eec6 &lt;runtime.rt0_go+0x146&gt;</span><br><span class="line">  44eeb8:	c6 05 9b d9 0f 00 00 	movb   $0x0,0xfd99b(%rip)        # 54c85a &lt;runtime.support_avx&gt;</span><br><span class="line">  44eebf:	c6 05 95 d9 0f 00 00 	movb   $0x0,0xfd995(%rip)        # 54c85b &lt;runtime.support_avx2&gt;</span><br><span class="line">  44eec6:	48 8b 05 5b f3 0d 00 	mov    0xdf35b(%rip),%rax        # 52e228 &lt;_cgo_init&gt;</span><br><span class="line">  44eecd:	48 85 c0             	test   %rax,%rax</span><br><span class="line">  44eed0:	74 26                	je     44eef8 &lt;runtime.rt0_go+0x178&gt;</span><br><span class="line">  44eed2:	48 89 f9             	mov    %rdi,%rcx</span><br><span class="line">  44eed5:	48 8d 35 c4 1b 00 00 	lea    0x1bc4(%rip),%rsi        # 450aa0 &lt;setg_gcc&gt;</span><br><span class="line">  44eedc:	ff d0                	callq  *%rax</span><br><span class="line">  44eede:	48 8d 0d 7b fb 0d 00 	lea    0xdfb7b(%rip),%rcx        # 52ea60 &lt;runtime.g0&gt;</span><br><span class="line">  44eee5:	48 8b 01             	mov    (%rcx),%rax</span><br><span class="line">  44eee8:	48 05 70 03 00 00    	add    $0x370,%rax</span><br><span class="line">  44eeee:	48 89 41 10          	mov    %rax,0x10(%rcx)</span><br><span class="line">  44eef2:	48 89 41 18          	mov    %rax,0x18(%rcx)</span><br><span class="line">  44eef6:	eb 2f                	jmp    44ef27 &lt;runtime.rt0_go+0x1a7&gt;</span><br><span class="line">  44eef8:	48 8d 3d e9 00 0e 00 	lea    0xe00e9(%rip),%rdi        # 52efe8 &lt;runtime.m0+0x88&gt;</span><br><span class="line">  44eeff:	e8 8c 3d 00 00       	callq  452c90 &lt;runtime.settls&gt;</span><br><span class="line">  44ef04:	64 48 c7 04 25 f8 ff 	movq   $0x123,%fs:0xfffffffffffffff8</span><br><span class="line">  44ef0b:	ff ff 23 01 00 00</span><br><span class="line">  44ef11:	48 8b 05 d0 00 0e 00 	mov    0xe00d0(%rip),%rax        # 52efe8 &lt;runtime.m0+0x88&gt;</span><br><span class="line">  44ef18:	48 3d 23 01 00 00    	cmp    $0x123,%rax</span><br><span class="line">  44ef1e:	74 07                	je     44ef27 &lt;runtime.rt0_go+0x1a7&gt;</span><br><span class="line">  44ef20:	89 04 25 00 00 00 00 	mov    %eax,0x0</span><br><span class="line">  44ef27:	48 8d 0d 32 fb 0d 00 	lea    0xdfb32(%rip),%rcx        # 52ea60 &lt;runtime.g0&gt;</span><br><span class="line">  44ef2e:	64 48 89 0c 25 f8 ff 	mov    %rcx,%fs:0xfffffffffffffff8</span><br><span class="line">  44ef35:	ff ff</span><br><span class="line">  44ef37:	48 8d 05 22 00 0e 00 	lea    0xe0022(%rip),%rax        # 52ef60 &lt;runtime.m0&gt;</span><br><span class="line">  44ef3e:	48 89 08             	mov    %rcx,(%rax)</span><br><span class="line">  44ef41:	48 89 41 30          	mov    %rax,0x30(%rcx)</span><br><span class="line">  44ef45:	fc                   	cld</span><br><span class="line">  44ef46:	e8 85 68 fe ff       	callq  4357d0 &lt;runtime.check&gt;</span><br><span class="line">  44ef4b:	8b 44 24 10          	mov    0x10(%rsp),%eax</span><br><span class="line">  44ef4f:	89 04 24             	mov    %eax,(%rsp)</span><br><span class="line">  44ef52:	48 8b 44 24 18       	mov    0x18(%rsp),%rax</span><br><span class="line">  44ef57:	48 89 44 24 08       	mov    %rax,0x8(%rsp)</span><br><span class="line">  44ef5c:	e8 6f 62 fe ff       	callq  4351d0 &lt;runtime.args&gt;</span><br><span class="line">  44ef61:	e8 aa 62 fd ff       	callq  425210 &lt;runtime.osinit&gt;</span><br><span class="line">  44ef66:	e8 d5 ac fd ff       	callq  429c40 &lt;runtime.schedinit&gt;</span><br><span class="line">  44ef6b:	48 8d 05 b6 ae 07 00 	lea    0x7aeb6(%rip),%rax        # 4c9e28 &lt;runtime.mainPC&gt;</span><br><span class="line">  44ef72:	50                   	push   %rax</span><br><span class="line">  44ef73:	6a 00                	pushq  $0x0</span><br><span class="line">  44ef75:	e8 36 14 fe ff       	callq  4303b0 &lt;runtime.newproc&gt;</span><br><span class="line">  44ef7a:	58                   	pop    %rax</span><br><span class="line">  44ef7b:	58                   	pop    %rax</span><br><span class="line">  44ef7c:	e8 7f cb fd ff       	callq  42bb00 &lt;runtime.mstart&gt;</span><br><span class="line">  44ef81:	c7 04 25 f1 00 00 00 	movl   $0xf1,0xf1</span><br><span class="line">  44ef88:	f1 00 00 00</span><br><span class="line">  44ef8c:	c3                   	retq</span><br><span class="line">  44ef8d:	cc                   	int3</span><br><span class="line">  44ef8e:	cc                   	int3</span><br><span class="line">  44ef8f:	cc                   	int3</span><br><span class="line"></span><br><span class="line">000000000044ef90 &lt;runtime.asminit&gt;:</span><br><span class="line">  44ef90:	c3                   	retq</span><br></pre></td></tr></table></figure>
+<p>At the same time, we can use dlv to debug it step by step. with dlv, we can verify the sequence of execution and identify the source files.</p>
+<h3 id="use-dlv-to-debug-‘hello-world’-step-by-step"><a href="#use-dlv-to-debug-‘hello-world’-step-by-step" class="headerlink" title="use dlv to debug ‘hello_world’ step by step."></a>use dlv to debug ‘hello_world’ step by step.</h3><img src="/2018/11/17/Explore-go-runtime-engine/dlv_debug.png" title="dlv_debug">
+<p>Until now, we get the below tables for the starting of go runtime engine.<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">|---------------------------------------------------|</span><br><span class="line">|           Functions               |     File      |</span><br><span class="line">| ------------------------------------------------- |</span><br><span class="line">| 1.    _rt0_amd64_linux  &lt;----   rt0_linux_amd64.s |</span><br><span class="line">|---------------------------------------------------|</span><br><span class="line">| 2.     runtime.rt0_go  &lt;----------   asm_amd64.s  |</span><br><span class="line">|                             |_____    stubs.go    |</span><br><span class="line">|---------------------------------------------------|</span><br><span class="line">| 3.      runtime.args  &lt;-----------   runtime1.go  |</span><br><span class="line">|---------------------------------------------------|</span><br><span class="line">| 4.     runtime.osinit  &lt;----------   os_linux.go  |</span><br><span class="line">|---------------------------------------------------|</span><br><span class="line">| 5.    runtime.schedinit  &lt;----|                   |  </span><br><span class="line">|       runtime.newproc    &lt;----|__ /-- proc.go     |  </span><br><span class="line">|        runtime.mstart    &lt;----|   \-- runtime2.go |  </span><br><span class="line">|---------------------------------------------------|</span><br></pre></td></tr></table></figure></p>
+<h2 id="Thoughts"><a href="#Thoughts" class="headerlink" title="Thoughts."></a>Thoughts.</h2><p>如果我们比较一下GO和SPARK的运行引擎，我们就会发现一些有意思的地方。GO和SPAKR虽然一个是编程语言，一个是计算框架， 但是都是为了解决计算瓶颈，并发问题而提出的方案。</p>
+<p>GO是彻底的革命者，通过从编程语言级别上的协程支持及CSP的并发模型，来彻底压榨CPU。尤其是GO的runtime能够监控系统调用，高效的协程调度的确给人眼前一亮，十分惊艳的感觉。在语言的设计上也很大胆，充分揉合了面向过程，面向对象及函数编程的精髓。</p>
+<img src="/2018/11/17/Explore-go-runtime-engine/g_scheduler.png" title="g_scheduler">
+<p>Spark是一个并行计算框架，也是非常聪明的务实者，通过Scala及Actor并发模型来高效解决大数据计算的问题。同时它也充分利用了JVM及Java world里已存的资源。在运行时调度上是通过分析spark作业，并发的完成作业的task。</p>
+<img src="/2018/11/17/Explore-go-runtime-engine/spark_scheduler.png" title="spark_scheduler">
+<h2 id="main-function-in-proc-go"><a href="#main-function-in-proc-go" class="headerlink" title="main function in proc.go"></a>main function in proc.go</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">main</span><br><span class="line">    -- getg</span><br><span class="line">    -- systemstack (asm_amd64.s)</span><br><span class="line">    -- newm (sysmon)</span><br><span class="line">        -- allocm</span><br><span class="line">            -- acquirep</span><br><span class="line">                -- wirep</span><br><span class="line">            -- mcommoninit</span><br><span class="line">                -- mpreinit (?)</span><br><span class="line">            -- malg  (allocate new g, with a stack)</span><br><span class="line">        -- newm1</span><br><span class="line">            -- funcPC</span><br><span class="line">            -- msanwrite</span><br><span class="line">            -- asmcgocall</span><br><span class="line">            -- newosproc    </span><br><span class="line">    -- lockOSThread</span><br><span class="line">        -- dolockOSThread</span><br><span class="line">    -- runtime_init</span><br><span class="line">    -- gcenable</span><br><span class="line">    -- startTemplateThread</span><br><span class="line">        -- newm</span><br><span class="line">    -- cgocall</span><br><span class="line">    -- main_init</span><br><span class="line">    -- unlockOSThread</span><br><span class="line">        -- dounlockOSThread</span><br><span class="line">    -- main_main</span><br><span class="line">    -- racefini</span><br><span class="line">    -- Gosched</span><br><span class="line">        -- checkTimeouts</span><br><span class="line">        -- mcall</span><br><span class="line">            -- gosched_m</span><br><span class="line">                -- traceGoSched</span><br><span class="line">                -- goschedImpl</span><br><span class="line">                    -- dumpgstatus</span><br><span class="line">                        -- readgstatus</span><br><span class="line">                    -- casgstatus</span><br><span class="line">                    -- dropg</span><br><span class="line">                        -- setMNoWB</span><br><span class="line">                        -- setGNoWB</span><br><span class="line">                    -- globrunqput</span><br><span class="line">                    -- schedule</span><br><span class="line">                        -- stoplockedm</span><br><span class="line">                            -- releasep</span><br><span class="line">                            -- handoffp</span><br><span class="line">                                -- runqempty</span><br><span class="line">                                -- startm</span><br><span class="line">                                -- gcBlackenEnabled</span><br><span class="line">                                -- gcMarkWorkAvailable</span><br><span class="line">                                -- pidleput</span><br><span class="line">                            -- notesleep</span><br><span class="line">                            -- acquirep</span><br><span class="line">                        -- execute</span><br><span class="line">                            -- gogo</span><br><span class="line">                        -- procyield</span><br><span class="line">                        -- osyield</span><br><span class="line">    -- gopark</span><br></pre></td></tr></table></figure>
+<h2 id="Refer-To"><a href="#Refer-To" class="headerlink" title="Refer To"></a>Refer To</h2><ul>
+<li><a href="https://github.com/cch123/golang-notes/blob/master/assembly.md" target="_blank" rel="noopener">https://github.com/cch123/golang-notes/blob/master/assembly.md</a></li>
+<li><a href="http://doc.cat-v.org/plan_9/4th_edition/papers/asm" target="_blank" rel="noopener">http://doc.cat-v.org/plan_9/4th_edition/papers/asm</a></li>
+</ul>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2018/11/22/Go-Debugger-Delve/" data-toggle="tooltip" data-placement="top"
+                           title="Delve, a better go debugger">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2018/11/05/play-with-minikube/" data-toggle="tooltip" data-placement="top"
+                           title="Play with minikube, helm, metallb and istio">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#hello-world-source-code"><span class="toc-text">hello_world source code.</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#entry-point-of-hello-world"><span class="toc-text">entry point of hello_world.</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#decompile-the-binary-to-asm-to-find-the-sequence-of-execution"><span class="toc-text">decompile the binary to asm to find the sequence of execution.</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#use-dlv-to-debug-‘hello-world’-step-by-step"><span class="toc-text">use dlv to debug ‘hello_world’ step by step.</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Thoughts"><span class="toc-text">Thoughts.</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#main-function-in-proc-go"><span class="toc-text">main function in proc.go</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Refer-To"><span class="toc-text">Refer To</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#go"
+                           title="go">go</a>
+                        
+                        <a class="tag" href="/tags/#linux"
+                           title="linux">linux</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; 亮随笔 2019
+                    <br>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="../../../../js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../../../../js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../../../../js/blog.js"></script>
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://lu-liang.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src=""><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+</body>
+
+</html>

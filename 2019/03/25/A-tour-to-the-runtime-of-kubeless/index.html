@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="lu liang 在Github上的个人博客">
+    <meta name="keyword" content="AI, Cloud">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="亮随笔" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        A tour to the runtime of kubeless｜Liang&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://lu-liang.github.io/2019/03/25/A-tour-to-the-runtime-of-kubeless/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="../../../../css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../../../../css/blog-style.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="../../../../css/syntax.css"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- hexo-inject:begin --><!-- hexo-inject:end --><!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    亮随笔
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>A tour to the runtime of kubeless</h1>
+                    
+                    <span class="meta">
+                         作者 Lu Liang
+                        <span>
+                          日期 2019-03-25
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#kubeless"
+                           title="kubeless">kubeless</a>
+                        
+                        <a class="tag" href="/tags/#k8s"
+                           title="k8s">k8s</a>
+                        
+                        <a class="tag" href="/tags/#serverless"
+                           title="serverless">serverless</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            A tour to the runtime of kubeless
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>kubeless is a Kubernetes-native serverless framework and it leverages Kubernetes resources to provide auto-scaling, API routing, monitoring, troubleshooting and more.</p>
+<p>By Kubeless, we can use a Custom Resource Definition to create functions as custom kubernetes resources and then run an in-cluster controller watching these custom resources and launching runtimes on-demand.</p>
+<p>In this article, we are focused on the implementation of runtime. Just as the showing of the below chart, Kubeless provides different runtimes for different program languages.</p>
+<img src="/2019/03/25/A-tour-to-the-runtime-of-kubeless/kubeless_design.png" title="kubeless_design.png">
+<p>According to the programing language, each runtime is really a kind of web server implemented with different web server framework such as <strong>“sinatra”</strong> in ruby, <strong>“bottle”</strong> in python,  <strong>“express”</strong> in nodejs and <strong>“com.sun.net.httpserver”</strong> in java. In the runtime server, it defines one handler to wrapper the created function and handles the call from http request.</p>
+<h2 id="Scaffold-in-Runtime"><a href="#Scaffold-in-Runtime" class="headerlink" title="Scaffold in Runtime"></a>Scaffold in Runtime</h2><p>The main steps for the implementation of runtime as follows:</p>
+<ol>
+<li>Load defined function.</li>
+<li>Create one web server.</li>
+<li>Create the custom handler to add performance/statistics hook.</li>
+<li>Wrapper the defined function with the custom handler function to serve http request.</li>
+</ol>
+<p>Let’s look into the details for different runtime.</p>
+<h2 id="Python-Runtime"><a href="#Python-Runtime" class="headerlink" title="Python Runtime"></a><a href="https://github.com/kubeless/runtimes/blob/master/stable/python/kubeless.py" target="_blank" rel="noopener">Python Runtime</a></h2><p>The implementation of python runtime is relatively simple. It’s only involved in one source file “kubeless.py”.</p>
+<p>The following is the analysis to describe the main logic and steps in this kind of runtime.   </p>
+<ol>
+<li><p>Use python module <strong>“mod”</strong> to load functions.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mod = imp.load_source(&apos;function&apos;,</span><br><span class="line">                    &apos;/kubeless/%s.py&apos; % os.getenv(&apos;MOD_NAME&apos;))</span><br><span class="line">func = getattr(mod, os.getenv(&apos;FUNC_HANDLER&apos;))</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Define the wrapper function</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def funcWrap(q, event, c):</span><br><span class="line">    try:</span><br><span class="line">        q.put(func(event, c))</span><br><span class="line">    except Exception as inst:</span><br><span class="line">        q.put(inst)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Implement the runtime with python http server module <strong>“bottle”</strong></p>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  app = application = bottle.app()</span><br><span class="line"></span><br><span class="line">if __name__ == &apos;__main__&apos;:</span><br><span class="line">    import logging</span><br><span class="line">    import sys</span><br><span class="line">    import requestlogger</span><br><span class="line">    loggedapp = requestlogger.WSGILogger(</span><br><span class="line">        app,</span><br><span class="line">        [logging.StreamHandler(stream=sys.stdout)],</span><br><span class="line">        requestlogger.ApacheFormatter())</span><br><span class="line">    bottle.run(loggedapp, server=&apos;cherrypy&apos;, host=&apos;0.0.0.0&apos;, port=func_port)</span><br></pre></td></tr></table></figure>
+<ol start="4">
+<li>With <strong>“bottle”</strong>, implement one handler by the module <strong>“multiprocessing”</strong> to handle the call of function in sub process.<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">with func_hist.labels(method).time():</span><br><span class="line">           q = Queue()</span><br><span class="line">           p = Process(target=funcWrap, args=(q, event, function_context))</span><br><span class="line">           p.start()</span><br><span class="line">           p.join(timeout)</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="Ruby-Runtime"><a href="#Ruby-Runtime" class="headerlink" title="Ruby Runtime"></a><a href="https://github.com/kubeless/runtimes/blob/master/stable/ruby/kubeless.rb" target="_blank" rel="noopener">Ruby Runtime</a></h2><ol>
+<li><p>Use ruby module <strong>“mod”</strong> to load functions.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">MOD_NAME = ENV[&apos;MOD_NAME&apos;]</span><br><span class="line">FUNC_HANDLER = ENV[&apos;FUNC_HANDLER&apos;]</span><br><span class="line">MOD_ROOT_PATH = ENV.fetch(&apos;MOD_ROOT_PATH&apos;, &apos;/kubeless/&apos;)</span><br><span class="line">MOD_PATH = &quot;#&#123;File.join(MOD_ROOT_PATH, MOD_NAME)&#125;.rb&quot;</span><br><span class="line">........</span><br><span class="line">.........</span><br><span class="line">begin</span><br><span class="line">  puts &quot;Loading #&#123;MOD_PATH&#125;&quot;</span><br><span class="line">  mod = Module.new</span><br><span class="line">  mod.module_eval(File.read(MOD_PATH))</span><br><span class="line">  # export the function handler</span><br><span class="line">  mod.module_eval(&quot;module_function :#&#123;FUNC_HANDLER&#125;&quot;)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Define the wrapper function</p>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def funcWrapper(mod, t)</span><br><span class="line">    status = Timeout::timeout(t) &#123;</span><br><span class="line">      res = mod.send(FUNC_HANDLER.to_sym, @event, @context)</span><br><span class="line">    &#125;</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+<ol start="3">
+<li>Implement the runtime with ruby framework <strong>“sinatra”</strong> and create “get, post” handler functions</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">require &apos;sinatra&apos;</span><br><span class="line">......</span><br><span class="line">......</span><br><span class="line"></span><br><span class="line">get &apos;/&apos; do</span><br><span class="line">  begin</span><br><span class="line">    funcWrapper(mod, ftimeout)</span><br><span class="line">  rescue Timeout::Error</span><br><span class="line">    status 408</span><br><span class="line">  end</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">post &apos;/&apos; do</span><br><span class="line">  begin</span><br><span class="line">    funcWrapper(mod, ftimeout)</span><br><span class="line">  rescue Timeout::Error</span><br><span class="line">    status 408</span><br><span class="line">  end</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+<h2 id="Node-JS-Runtime"><a href="#Node-JS-Runtime" class="headerlink" title="Node JS Runtime"></a><a href="https://github.com/kubeless/runtimes/blob/master/stable/nodejs/kubeless.js" target="_blank" rel="noopener">Node JS Runtime</a></h2><ol>
+<li><p>Define module “./lib/helper”, Create web server and use <strong>“vm.Script”</strong> to load functions.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">const express = require(&apos;express&apos;);</span><br><span class="line">const helper = require(&apos;./lib/helper&apos;);</span><br><span class="line">......</span><br><span class="line">......</span><br><span class="line"></span><br><span class="line">const modPath = path.join(modRootPath, `$&#123;modName&#125;.js`);</span><br><span class="line">const libPath = path.join(modRootPath, &apos;node_modules&apos;);</span><br><span class="line">const pkgPath = path.join(modRootPath, &apos;package.json&apos;);</span><br><span class="line">const libDeps = helper.readDependencies(pkgPath);</span><br><span class="line">.....</span><br><span class="line">.....</span><br><span class="line">const app = express();</span><br><span class="line">.....</span><br><span class="line">.....</span><br><span class="line">const script = new vm.Script(&apos;\nrequire(\&apos;kubeless\&apos;)(require(\&apos;&apos;+ modPath +&apos;\&apos;));\n&apos;, &#123;</span><br><span class="line">    filename: modPath,</span><br><span class="line">    displayErrors: true,</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>In handler function, call <strong>“script.runInNewContext”</strong> to serve request.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">const sandbox = Object.assign(&#123;&#125;, global, &#123;</span><br><span class="line">            __filename: modPath,</span><br><span class="line">            __dirname: modRootPath,</span><br><span class="line">            module: new Module(modPath, null),</span><br><span class="line">            require: (p) =&gt; modRequire(p, req, res, end),</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        try &#123;</span><br><span class="line">            script.runInNewContext(sandbox, &#123; timeout : timeout * 1000 &#125;);</span><br><span class="line">        &#125; catch (err) &#123;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="Java-Runtime"><a href="#Java-Runtime" class="headerlink" title="Java Runtime"></a><a href="https://github.com/kubeless/runtimes/tree/master/stable/java" target="_blank" rel="noopener">Java Runtime</a></h2><ol>
+<li><p>Define HttpServer and use <strong>“Class.forName”</strong> to load function in java/io/kubeless/Handler.java.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">try &#123;</span><br><span class="line">            HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);</span><br><span class="line">            server.createContext(&quot;/&quot;, new FunctionHandler());</span><br><span class="line">            server.createContext(&quot;/healthz&quot;, new HealthHandler());</span><br><span class="line">            server.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(50));</span><br><span class="line">            server.start();</span><br><span class="line"></span><br><span class="line">            Class&lt;?&gt; c = Class.forName(&quot;io.kubeless.&quot;+className);</span><br><span class="line">            obj = c.newInstance();</span><br><span class="line">            method = c.getMethod(methodName, io.kubeless.Event.class, io.kubeless.Context.class);</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Handle the http request by static class <strong>“FunctionHandler”</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Event event = new Event(requestBody, eventId, eventType, eventTime, eventNamespace);</span><br><span class="line">Context context = new Context(methodName, timeout, runtime, memoryLimit);</span><br><span class="line"></span><br><span class="line">Object returnValue = Handler.method.invoke(Handler.obj, event, context);</span><br><span class="line">String response = (String)returnValue;</span><br><span class="line">logger.info(&quot;Response: &quot; + response);</span><br><span class="line">he.sendResponseHeaders(200, response.length());</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="Go-Runtime"><a href="#Go-Runtime" class="headerlink" title="Go Runtime"></a><a href="https://github.com/kubeless/runtimes/blob/master/stable/golang/kubeless.tpl.go" target="_blank" rel="noopener">Go Runtime</a></h2><ol>
+<li><p>Modify the template to inject function name by <strong>“compile-function.sh”</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">#!/bin/bash</span><br><span class="line"></span><br><span class="line">set -e</span><br><span class="line"></span><br><span class="line"># Replace FUNCTION placeholder</span><br><span class="line">sed &quot;s/&lt;&lt;FUNCTION&gt;&gt;/$&#123;KUBELESS_FUNC_NAME&#125;/g&quot; $GOPATH/src/controller/kubeless.tpl.go &gt; $GOPATH/src/controller/kubeless.go</span><br><span class="line"># Remove vendored version of kubeless if exists</span><br><span class="line">rm -rf $GOPATH/src/kubeless/vendor/github.com/kubeless/kubeless</span><br><span class="line"># Build command</span><br><span class="line">go build -o $KUBELESS_INSTALL_VOLUME/server $GOPATH/src/controller/kubeless.go &gt; /dev/termination-log 2&gt;&amp;1</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Implement web server in ProxyUtils by <strong>“net/http”</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">func main() &#123;</span><br><span class="line">	http.HandleFunc(&quot;/&quot;, handler)</span><br><span class="line">	http.HandleFunc(&quot;/healthz&quot;, health)</span><br><span class="line">	http.Handle(&quot;/metrics&quot;, promhttp.Handler())</span><br><span class="line">	proxyUtils.ListenAndServe()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Handle http request by function chain <strong>“handler” -&gt; “ProxyUtils” -&gt; “handle”</strong></p>
+</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">func handle(ctx context.Context, w http.ResponseWriter, r *http.Request) ([]byte, error) &#123;</span><br><span class="line">	data, err := ioutil.ReadAll(r.Body)</span><br><span class="line">	...</span><br><span class="line">  ...</span><br><span class="line">	res, err := kubeless.&lt;&lt;FUNCTION&gt;&gt;(event, funcContext)</span><br><span class="line">	return []byte(res), err</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">func handler(w http.ResponseWriter, r *http.Request) &#123;</span><br><span class="line">	...</span><br><span class="line">  ...</span><br><span class="line">	proxyUtils.Handler(w, r, handle)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Refer-to"><a href="#Refer-to" class="headerlink" title="Refer to:"></a>Refer to:</h2><ul>
+<li><a href="https://kubeless.io/docs" target="_blank" rel="noopener">https://kubeless.io/docs</a></li>
+<li><a href="https://medium.com/bitnami-perspectives/12-minutes-with-kubeless-and-minikube-da389319bdeb" target="_blank" rel="noopener">https://medium.com/bitnami-perspectives/12-minutes-with-kubeless-and-minikube-da389319bdeb</a></li>
+</ul>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    
+                    <li class="next">
+                        <a href="/2018/12/18/exploit-beat/" data-toggle="tooltip" data-placement="top"
+                           title="How to develop a beat">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Scaffold-in-Runtime"><span class="toc-text">Scaffold in Runtime</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Python-Runtime"><span class="toc-text">Python Runtime</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Ruby-Runtime"><span class="toc-text">Ruby Runtime</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Node-JS-Runtime"><span class="toc-text">Node JS Runtime</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Java-Runtime"><span class="toc-text">Java Runtime</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Go-Runtime"><span class="toc-text">Go Runtime</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Refer-to"><span class="toc-text">Refer to:</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#kubeless"
+                           title="kubeless">kubeless</a>
+                        
+                        <a class="tag" href="/tags/#k8s"
+                           title="k8s">k8s</a>
+                        
+                        <a class="tag" href="/tags/#serverless"
+                           title="serverless">serverless</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; 亮随笔 2019
+                    <br>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="../../../../js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../../../../js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../../../../js/blog.js"></script>
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://lu-liang.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src=""><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+</body>
+
+</html>

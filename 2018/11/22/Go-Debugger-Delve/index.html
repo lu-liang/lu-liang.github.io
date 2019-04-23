@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="lu liang 在Github上的个人博客">
+    <meta name="keyword" content="AI, Cloud">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="亮随笔" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        Delve, a better go debugger｜Liang&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://lu-liang.github.io/2018/11/22/Go-Debugger-Delve/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="../../../../css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../../../../css/blog-style.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="../../../../css/syntax.css"><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+</head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- hexo-inject:begin --><!-- hexo-inject:end --><!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    亮随笔
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>Delve, a better go debugger</h1>
+                    
+                    <span class="meta">
+                         作者 Lu Liang
+                        <span>
+                          日期 2018-11-22
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#go"
+                           title="go">go</a>
+                        
+                        <a class="tag" href="/tags/#delve"
+                           title="delve">delve</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            Delve, a better go debugger
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>Delve is a debugger for the Go programming language. We can debug and explore go program with it easily.</p>
+<h2 id="Installation"><a href="#Installation" class="headerlink" title="Installation"></a>Installation</h2><p>Delve can be installed by “go get”. After the installation, you can find it under $HOME/go. All we need to do is to add the folder “$HOME/go/bin” to $PATH.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">go get -u github.com/derekparker/delve/cmd/dlv</span><br><span class="line">export PATH=$PATH:$HOME/go/bin</span><br></pre></td></tr></table></figure>
+<h2 id="Usage"><a href="#Usage" class="headerlink" title="Usage"></a>Usage</h2><p>The following are 3 ways to debug go program with dlv.</p>
+<ul>
+<li><p>dlv command.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">dlv attach      Attach to running process and begin debugging.</span><br><span class="line">dlv connect     Connect to a headless debug server.</span><br><span class="line">dlv core        Examine a core dump.</span><br><span class="line">dlv debug       Compile and begin debugging main package in current directory, or the package specified.</span><br><span class="line">dlv exec        Execute a precompiled binary, and begin a debug session.</span><br><span class="line">dlv help        Help about any command</span><br><span class="line">dlv run         Deprecated command. Use &apos;debug&apos; instead.</span><br><span class="line">dlv test        Compile test binary and begin debugging program.</span><br><span class="line">dlv trace       Compile and begin tracing program.</span><br><span class="line">dlv version     Prints version</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>dlv api</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># start dlv with --headless at remote and use dlv ui to connect in local.</span><br><span class="line">dlv attach 18707 --headless --api-version=2 --log --listen=9.xx.xx.65:8181</span><br><span class="line"></span><br><span class="line"># start gdlv to connect the remote debug.</span><br><span class="line">➜  gdlv connect 9.xx.xx.65:8181</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>dlv ui<br>There are a lot of editor plugins for dlv ui. You can install them based on this instruction <a href="https://github.com/derekparker/delve/blob/master/Documentation/EditorIntegration.md" target="_blank" rel="noopener">https://github.com/derekparker/delve/blob/master/Documentation/EditorIntegration.md</a>. Here, we take gdlv as example to do introduction.  </p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"> # install gdlv with &quot;go get&quot;</span><br><span class="line"> go get -u github.com/aarzilli/gdlv</span><br><span class="line"></span><br><span class="line"> # gdlv usage.</span><br><span class="line"> gdlv connect &lt;address&gt;</span><br><span class="line">gdlv debug &lt;program&apos;s arguments...&gt;</span><br><span class="line">gdlv run &lt;program file&gt; &lt;program&apos;s arguments...&gt;</span><br><span class="line">gdlv exec &lt;executable&gt; &lt;program&apos;s arguments...&gt;</span><br><span class="line">gdlv test &lt;testflags...&gt;</span><br><span class="line">gdlv attach &lt;pid&gt; [path to executable]</span><br><span class="line">gdlv core &lt;executable&gt; &lt;core file&gt;</span><br><span class="line">gdlv reply &lt;trace directory&gt;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<img src="/2018/11/22/Go-Debugger-Delve/gdlv.png" title="gdlv">
+<h2 id="Example"><a href="#Example" class="headerlink" title="Example."></a>Example.</h2><p>The following are some samples to show dlv with the hello_world.</p>
+<h3 id="the-source-code-of-hellow-world"><a href="#the-source-code-of-hellow-world" class="headerlink" title="the source code of hellow_world"></a>the source code of hellow_world</h3><p>To avoid the program exit immediately, we add some sleep time before print the “hello world”.<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">package main</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line">	&quot;time&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line">	time.Sleep(time.Duration(60)*time.Second)</span><br><span class="line">        fmt.Printf(&quot;hello, world\n&quot;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="attach-the-program"><a href="#attach-the-program" class="headerlink" title="attach the program"></a>attach the program</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">➜  bin ps -ef|grep hello</span><br><span class="line">root     18192 18133  0 11月21 pts/2  00:00:00 ./hello_world</span><br><span class="line"></span><br><span class="line">➜  bin ./dlv attach 18192</span><br><span class="line">Type &apos;help&apos; for list of commands.</span><br><span class="line">(dlv)</span><br></pre></td></tr></table></figure>
+<h3 id="show-available-commands"><a href="#show-available-commands" class="headerlink" title="show available commands"></a>show available commands</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">(dlv) help</span><br><span class="line">The following commands are available:</span><br><span class="line">    args ------------------------ Print function arguments.</span><br><span class="line">    break (alias: b) ------------ Sets a breakpoint.</span><br><span class="line">    breakpoints (alias: bp) ----- Print out info for active breakpoints.</span><br><span class="line">    call ------------------------ Resumes process, injecting a function call (EXPERIMENTAL!!!)</span><br><span class="line">    clear ----------------------- Deletes breakpoint.</span><br><span class="line">    clearall -------------------- Deletes multiple breakpoints.</span><br><span class="line">    condition (alias: cond) ----- Set breakpoint condition.</span><br><span class="line">    config ---------------------- Changes configuration parameters.</span><br><span class="line">    continue (alias: c) --------- Run until breakpoint or program termination.</span><br><span class="line">    deferred -------------------- Executes command in the context of a deferred call.</span><br><span class="line">    disassemble (alias: disass) - Disassembler.</span><br><span class="line">    down ------------------------ Move the current frame down.</span><br><span class="line">    edit (alias: ed) ------------ Open where you are in $DELVE_EDITOR or $EDITOR</span><br><span class="line">    exit (alias: quit | q) ------ Exit the debugger.</span><br><span class="line">    frame ----------------------- Set the current frame, or execute command on a different frame.</span><br><span class="line">    funcs ----------------------- Print list of functions.</span><br><span class="line">    goroutine ------------------- Shows or changes current goroutine</span><br><span class="line">    goroutines ------------------ List program goroutines.</span><br><span class="line">    help (alias: h) ------------- Prints the help message.</span><br><span class="line">    list (alias: ls | l) -------- Show source code.</span><br><span class="line">    locals ---------------------- Print local variables.</span><br><span class="line">    next (alias: n) ------------- Step over to next source line.</span><br><span class="line">    on -------------------------- Executes a command when a breakpoint is hit.</span><br><span class="line">    print (alias: p) ------------ Evaluate an expression.</span><br><span class="line">    regs ------------------------ Print contents of CPU registers.</span><br><span class="line">    restart (alias: r) ---------- Restart process.</span><br><span class="line">    set ------------------------- Changes the value of a variable.</span><br><span class="line">    source ---------------------- Executes a file containing a list of delve commands</span><br><span class="line">    sources --------------------- Print list of source files.</span><br><span class="line">    stack (alias: bt) ----------- Print stack trace.</span><br><span class="line">    step (alias: s) ------------- Single step through program.</span><br><span class="line">    step-instruction (alias: si)  Single step a single cpu instruction.</span><br><span class="line">    stepout --------------------- Step out of the current function.</span><br><span class="line">    thread (alias: tr) ---------- Switch to the specified thread.</span><br><span class="line">    threads --------------------- Print out info for every traced thread.</span><br><span class="line">    trace (alias: t) ------------ Set tracepoint.</span><br><span class="line">    types ----------------------- Print list of types</span><br><span class="line">    up -------------------------- Move the current frame up.</span><br><span class="line">    vars ------------------------ Print package variables.</span><br><span class="line">    whatis ---------------------- Prints type of an expression.</span><br><span class="line">Type help followed by a command for full documentation.</span><br></pre></td></tr></table></figure>
+<h3 id="show-all-goroutines"><a href="#show-all-goroutines" class="headerlink" title="show all goroutines"></a>show all goroutines</h3><p>The running goroutine is 19.<br><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">(dlv) goroutines</span><br><span class="line">[5 goroutines]</span><br><span class="line">  Goroutine 1 - User: /usr/lib/golang/src/runtime/time.go:65 time.Sleep (0x4429e0)</span><br><span class="line">  Goroutine 2 - User: /usr/lib/golang/src/runtime/proc.go:288 runtime.gopark (0x428eac)</span><br><span class="line">  Goroutine 17 - User: /usr/lib/golang/src/runtime/proc.go:288 runtime.gopark (0x428eac)</span><br><span class="line">  Goroutine 18 - User: /usr/lib/golang/src/runtime/proc.go:288 runtime.gopark (0x428eac)</span><br><span class="line">* Goroutine 19 - User: /usr/lib/golang/src/runtime/lock_futex.go:227 runtime.notetsleepg (0x40d582)</span><br></pre></td></tr></table></figure></p>
+<h3 id="show-stack-for-specified-goroutine"><a href="#show-stack-for-specified-goroutine" class="headerlink" title="show stack for specified goroutine"></a>show stack for specified goroutine</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">(dlv) goroutine 1 stack</span><br><span class="line">0  0x0000000000428eac in runtime.gopark</span><br><span class="line">   at /usr/lib/golang/src/runtime/proc.go:288</span><br><span class="line">1  0x0000000000428f9e in runtime.goparkunlock</span><br><span class="line">   at /usr/lib/golang/src/runtime/proc.go:293</span><br><span class="line">2  0x00000000004429e0 in time.Sleep</span><br><span class="line">   at /usr/lib/golang/src/runtime/time.go:65</span><br><span class="line">3  0x0000000000489bf0 in main.main</span><br><span class="line">   at /root/tmp/go/hello_world.go:9</span><br><span class="line">4  0x0000000000428a06 in runtime.main</span><br><span class="line">   at /usr/lib/golang/src/runtime/proc.go:195</span><br><span class="line">5  0x0000000000451721 in runtime.goexit</span><br><span class="line">   at /usr/lib/golang/src/runtime/asm_amd64.s:2337</span><br><span class="line"></span><br><span class="line">(dlv) goroutine 2 stack</span><br><span class="line">0  0x0000000000428eac in runtime.gopark</span><br><span class="line">   at /usr/lib/golang/src/runtime/proc.go:288</span><br><span class="line">1  0x0000000000428f9e in runtime.goparkunlock</span><br><span class="line">   at /usr/lib/golang/src/runtime/proc.go:293</span><br><span class="line">2  0x0000000000428ccc in runtime.forcegchelper</span><br><span class="line">   at /usr/lib/golang/src/runtime/proc.go:245</span><br><span class="line">3  0x0000000000451721 in runtime.goexit</span><br><span class="line">   at /usr/lib/golang/src/runtime/asm_amd64.s:2337</span><br><span class="line"></span><br><span class="line">(dlv) goroutine 19 stack</span><br><span class="line">0  0x000000000040d582 in runtime.notetsleepg</span><br><span class="line">   at /usr/lib/golang/src/runtime/lock_futex.go:227</span><br><span class="line">1  0x00000000004431f5 in runtime.timerproc</span><br><span class="line">   at /usr/lib/golang/src/runtime/time.go:216</span><br><span class="line">2  0x0000000000451721 in runtime.goexit</span><br><span class="line">   at /usr/lib/golang/src/runtime/asm_amd64.s:2337</span><br></pre></td></tr></table></figure>
+<h3 id="show-threads"><a href="#show-threads" class="headerlink" title="show threads"></a>show threads</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">(dlv) threads</span><br><span class="line">* Thread 18192 at 0x452bd3 /usr/lib/golang/src/runtime/sys_linux_amd64.s:480 runtime.futex</span><br><span class="line">  Thread 18193 at 0x452bd3 /usr/lib/golang/src/runtime/sys_linux_amd64.s:480 runtime.futex</span><br><span class="line">  Thread 18194 at 0x452bd3 /usr/lib/golang/src/runtime/sys_linux_amd64.s:480 runtime.futex</span><br><span class="line">  Thread 18195 at 0x452bd3 /usr/lib/golang/src/runtime/sys_linux_amd64.s:480 runtime.futex</span><br><span class="line">  Thread 18196 at 0x452bd3 /usr/lib/golang/src/runtime/sys_linux_amd64.s:480 runtime.futex</span><br></pre></td></tr></table></figure>
+<h3 id="list-relevant-source-code"><a href="#list-relevant-source-code" class="headerlink" title="list relevant source code"></a>list relevant source code</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">(dlv) l</span><br><span class="line">&gt; runtime.futex() /usr/lib/golang/src/runtime/sys_linux_amd64.s:480 (PC: 0x452bd3)</span><br><span class="line">   475:		MOVQ	ts+16(FP), R10</span><br><span class="line">   476:		MOVQ	addr2+24(FP), R8</span><br><span class="line">   477:		MOVL	val3+32(FP), R9</span><br><span class="line">   478:		MOVL	$202, AX</span><br><span class="line">   479:		SYSCALL</span><br><span class="line">=&gt; 480:		MOVL	AX, ret+40(FP)</span><br><span class="line">   481:		RET</span><br><span class="line">   482:</span><br><span class="line">   483:	// int32 clone(int32 flags, void *stk, M *mp, G *gp, void (*fn)(void));</span><br><span class="line">   484:	TEXT runtime·clone(SB),NOSPLIT,$0</span><br><span class="line">   485:		MOVL	flags+0(FP), DI</span><br><span class="line">(dlv)</span><br></pre></td></tr></table></figure>
+<h3 id="use-up-down-to-go-through-the-current-frame"><a href="#use-up-down-to-go-through-the-current-frame" class="headerlink" title="use up/down to go through the current frame."></a>use up/down to go through the current frame.</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">(dlv) down</span><br><span class="line">&gt; runtime.futex() /usr/lib/golang/src/runtime/sys_linux_amd64.s:480 (PC: 0x452bd3)</span><br><span class="line">Frame 4: /usr/lib/golang/src/runtime/time.go:216 (PC: 4431f5)</span><br><span class="line">   211:			// At least one timer pending. Sleep until then.</span><br><span class="line">   212:			timers.sleeping = true</span><br><span class="line">   213:			timers.sleepUntil = now + delta</span><br><span class="line">   214:			noteclear(&amp;timers.waitnote)</span><br><span class="line">   215:			unlock(&amp;timers.lock)</span><br><span class="line">=&gt; 216:			notetsleepg(&amp;timers.waitnote, delta)</span><br><span class="line">   217:		&#125;</span><br><span class="line">   218:	&#125;</span><br><span class="line">   219:</span><br><span class="line">   220:	func timejump() *g &#123;</span><br><span class="line">   221:		if faketime == 0 &#123;</span><br><span class="line">(dlv) up</span><br><span class="line">&gt; runtime.futex() /usr/lib/golang/src/runtime/sys_linux_amd64.s:480 (PC: 0x452bd3)</span><br><span class="line">Frame 5: /usr/lib/golang/src/runtime/asm_amd64.s:2337 (PC: 451721)</span><br><span class="line">  2332:		RET</span><br><span class="line">  2333:</span><br><span class="line">  2334:	// The top-most function running on a goroutine</span><br><span class="line">  2335:	// returns to goexit+PCQuantum.</span><br><span class="line">  2336:	TEXT runtime·goexit(SB),NOSPLIT,$0-0</span><br><span class="line">=&gt;2337:		BYTE	$0x90	// NOP</span><br><span class="line">  2338:		CALL	runtime·goexit1(SB)	// does not return</span><br><span class="line">  2339:		// traceback from goexit1 must hit code range of goexit</span><br><span class="line">  2340:		BYTE	$0x90	// NOP</span><br><span class="line">  2341:</span><br><span class="line">  2342:	TEXT runtime·prefetcht0(SB),NOSPLIT,$0-8</span><br><span class="line">(dlv)</span><br></pre></td></tr></table></figure>
+<h2 id="Refer-to"><a href="#Refer-to" class="headerlink" title="Refer to:"></a>Refer to:</h2><ul>
+<li><a href="https://github.com/derekparker/delve/blob/master/Documentation/installation/linux/install.md" target="_blank" rel="noopener">https://github.com/derekparker/delve/blob/master/Documentation/installation/linux/install.md</a></li>
+<li><a href="https://github.com/derekparker/delve/tree/master/Documentation/usage" target="_blank" rel="noopener">https://github.com/derekparker/delve/tree/master/Documentation/usage</a></li>
+</ul>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2018/12/18/exploit-beat/" data-toggle="tooltip" data-placement="top"
+                           title="How to develop a beat">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2018/11/17/Explore-go-runtime-engine/" data-toggle="tooltip" data-placement="top"
+                           title="Explore go runtime engine">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Installation"><span class="toc-text">Installation</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Usage"><span class="toc-text">Usage</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Example"><span class="toc-text">Example.</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#the-source-code-of-hellow-world"><span class="toc-text">the source code of hellow_world</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#attach-the-program"><span class="toc-text">attach the program</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#show-available-commands"><span class="toc-text">show available commands</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#show-all-goroutines"><span class="toc-text">show all goroutines</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#show-stack-for-specified-goroutine"><span class="toc-text">show stack for specified goroutine</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#show-threads"><span class="toc-text">show threads</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#list-relevant-source-code"><span class="toc-text">list relevant source code</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#use-up-down-to-go-through-the-current-frame"><span class="toc-text">use up/down to go through the current frame.</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Refer-to"><span class="toc-text">Refer to:</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#go"
+                           title="go">go</a>
+                        
+                        <a class="tag" href="/tags/#delve"
+                           title="delve">delve</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                    <li>
+                        <a target="_blank" href="https://twitter.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-twitter fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+                
+                    <li>
+                        <a target="_blank" href="https://www.zhihu.com/people/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa  fa-stack-1x fa-inverse">知</i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="http://weibo.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-weibo fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank" href="https://www.facebook.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-facebook fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://github.com/lu-liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                
+                    <li>
+                        <a target="_blank"  href="https://www.linkedin.com/in/lu.ll.liang">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; 亮随笔 2019
+                    <br>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="../../../../js/jquery.min.js"></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../../../../js/bootstrap.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../../../../js/blog.js"></script>
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://lu-liang.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src=""><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end -->
+</body>
+
+</html>
